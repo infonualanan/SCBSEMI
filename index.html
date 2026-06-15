@@ -199,7 +199,7 @@
                         </div>
                         <div>
                             <label class="text-[9px] text-slate-400 block mb-0.5 font-medium">NAV วันก่อนหน้า</label>
-                            <input id="lastNav" type="number" step="0.0001" value="10.5000" oninput="window.calculatePortfolio()" class="w-full bg-slate-950 text-white text-xs border border-slate-700 rounded px-1.5 py-1 text-center font-mono focus:outline-none focus:border-scbPurple">
+                            <input id="lastNav" type="number" step="0.0001" value="39.1699" oninput="window.calculatePortfolio()" class="w-full bg-slate-950 text-white text-xs border border-slate-700 rounded px-1.5 py-1 text-center font-mono focus:outline-none focus:border-scbPurple">
                         </div>
                     </div>
                 </div>
@@ -1087,14 +1087,14 @@
             if (!isCloudEnabled) {
                 const statusTxtEl = document.getElementById('statusText');
                 const syncIndEl = document.getElementById('syncIndicator');
-                if (statusTxtEl) statusTxtEl.innerText = "รันบนโหมด Vercel (ออฟไลน์คลาวด์)";
+                if (statusTxtEl) statusTxtEl.innerText = "รันบนโหมด Vercel (เปิดใช้งานระบบบันทึกในเครื่อง)";
                 if (syncIndEl) {
                     syncIndEl.classList.remove('border-slate-800');
                     syncIndEl.classList.add('border-slate-700');
                     document.getElementById('statusGlow').className = "";
                     document.getElementById('statusDot').className = "relative inline-flex rounded-full h-2 w-2 bg-slate-500";
                 }
-                renderHistoryTable([]); // Show Empty State
+                loadLocalDataFallback(); // Show Local State
                 return;
             }
 
@@ -1111,10 +1111,29 @@
                 } catch (anonymErr) {
                     console.error("Failed anonymous authentication fallback", anonymErr);
                     const statusTxtEl = document.getElementById('statusText');
-                    if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์ (กรอกข้อมูลได้ปกติ)";
+                    if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์ (เปิดใช้งานระบบบันทึกในเครื่อง)";
+                    loadLocalDataFallback();
                 }
             }
         };
+
+        function loadLocalDataFallback() {
+            const settings = JSON.parse(localStorage.getItem('scbsemi_settings') || '{}');
+            if (settings.lastNav) {
+                document.getElementById('investAmt').value = settings.investAmt || 10000;
+                document.getElementById('buyNav').value = settings.buyNav || 10.0000;
+                document.getElementById('lastNav').value = settings.lastNav || 39.1699;
+            }
+            window.calculatePortfolio();
+
+            const historyList = JSON.parse(localStorage.getItem('scbsemi_history') || '[]');
+            historyList.sort((a, b) => {
+                const dateA = a.date + " " + a.time;
+                const dateB = b.date + " " + b.time;
+                return dateB.localeCompare(dateA); 
+            });
+            renderHistoryTable(historyList);
+        }
 
         if (isCloudEnabled) {
             onAuthStateChanged(auth, (user) => {
@@ -1149,10 +1168,10 @@
                     const data = docSnap.data();
                     document.getElementById('investAmt').value = data.investAmt || 10000;
                     document.getElementById('buyNav').value = data.buyNav || 10.0000;
-                    document.getElementById('lastNav').value = data.lastNav || 10.5000;
+                    document.getElementById('lastNav').value = data.lastNav || 39.1699;
                     window.calculatePortfolio();
                 } else {
-                    savePortfolioSettingsSilent();
+                    window.savePortfolioSettingsSilent();
                 }
             }, (err) => {
                 console.error("Failed syncing settings:", err);
@@ -1218,31 +1237,38 @@
         }
 
         window.savePortfolioSettings = async function() {
-            if (!isCloudEnabled || !currentUser) {
-                addLog("ระบบคลาวด์ปิดการทำงานเมื่อรันภายนอก (Vercel Mode)", "warning");
-                return;
-            }
-
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
 
-            addLog("กำลังบันทึกข้อมูลตั้งค่าพอร์ตไปยังระบบคลาวด์...", "info");
+            addLog("กำลังบันทึกข้อมูลตั้งค่าพอร์ต...", "info");
+
+            if (!isCloudEnabled || !currentUser) {
+                localStorage.setItem('scbsemi_settings', JSON.stringify({ investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() }));
+                addLog("บันทึกพอร์ตลงในเครื่อง (Local Storage) สำเร็จ!", "text-emerald-400");
+                return;
+            }
+
             try {
                 const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'portfolio', 'settings');
                 await setDoc(docRef, { investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() });
-                addLog("บันทึกพอร์ตเข้าคลาวด์สำรองสำเร็จ!", "text-emerald-400");
+                addLog("บันทึกพอร์ตเข้าคลาวด์สำเร็จ!", "text-emerald-400");
             } catch (err) {
                 console.error("Save failure", err);
                 addLog("บันทึกข้อมูลพอร์ตล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ต", "warning");
             }
         };
 
-        async function savePortfolioSettingsSilent() {
-            if (!isCloudEnabled || !currentUser) return;
+        window.savePortfolioSettingsSilent = async function() {
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 10000;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 10.0000;
-            const lastNav = parseFloat(document.getElementById('lastNav').value) || 10.5000;
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 39.1699;
+            
+            if (!isCloudEnabled || !currentUser) {
+                localStorage.setItem('scbsemi_settings', JSON.stringify({ investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() }));
+                return;
+            }
+
             try {
                 const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'portfolio', 'settings');
                 await setDoc(docRef, { investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() });
@@ -1252,11 +1278,6 @@
         }
 
         window.saveManualSnapshot = async function() {
-            if (!isCloudEnabled || !currentUser) {
-                addLog("ไม่สามารถเซฟประวัติได้ (ใช้งานโหมด Vercel ออฟไลน์)", "warning");
-                return;
-            }
-
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
@@ -1276,23 +1297,35 @@
             const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
             const dateThai = `${thTime.getDate()} ${thaiMonths[thTime.getMonth()]} ${thTime.getFullYear() + 543}`;
 
-            addLog("กำลังเก็บบันทึก Snapshot ยอดพอร์ตปัจจุบันลงฐานข้อมูล...", "info");
+            addLog("กำลังเก็บบันทึก Snapshot ยอดพอร์ตปัจจุบัน...", "info");
+
+            const snapshotData = {
+                date: dateStr,
+                dateThai: dateThai,
+                time: timeStr,
+                lastNav,
+                currentNav,
+                investAmt,
+                buyNav,
+                profitLossAmt,
+                profitLossPercent,
+                createdType: "Manual",
+                timestamp: new Date().toISOString()
+            };
+
+            if (!isCloudEnabled || !currentUser) {
+                snapshotData.id = Date.now().toString();
+                const historyList = JSON.parse(localStorage.getItem('scbsemi_history') || '[]');
+                historyList.push(snapshotData);
+                localStorage.setItem('scbsemi_history', JSON.stringify(historyList));
+                loadLocalDataFallback(); 
+                addLog(`บันทึก Snapshot ลงเครื่องสำเร็จ (${timeStr} น.)`, "text-emerald-400");
+                return;
+            }
 
             try {
                 const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'history');
-                await addDoc(colRef, {
-                    date: dateStr,
-                    dateThai: dateThai,
-                    time: timeStr,
-                    lastNav,
-                    currentNav,
-                    investAmt,
-                    buyNav,
-                    profitLossAmt,
-                    profitLossPercent,
-                    createdType: "Manual",
-                    timestamp: new Date().toISOString()
-                });
+                await addDoc(colRef, snapshotData);
                 addLog(`บันทึก Snapshot ประสบความสำเร็จ (${timeStr} น.)`, "text-emerald-400");
             } catch (err) {
                 console.error("Save snapshot error", err);
@@ -1301,8 +1334,17 @@
         };
 
         window.deleteHistoryRecord = async function(docId) {
-            if (!isCloudEnabled || !currentUser || !docId) return;
+            if (!docId) return;
             if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลประวัติ Snapshot นี้ออกอย่างถาวร?")) return;
+
+            if (!isCloudEnabled || !currentUser) {
+                let historyList = JSON.parse(localStorage.getItem('scbsemi_history') || '[]');
+                historyList = historyList.filter(item => item.id !== docId);
+                localStorage.setItem('scbsemi_history', JSON.stringify(historyList));
+                loadLocalDataFallback();
+                addLog("ลบประวัติ Snapshot ออกจากเครื่องสำเร็จ", "info");
+                return;
+            }
 
             try {
                 const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'history', docId);
@@ -1315,8 +1357,6 @@
         };
 
         window.triggerAutomaticTimeSnapshot = async function(dateStr, timeStr, hourVal) {
-            if (!isCloudEnabled || !currentUser) return;
-
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
@@ -1331,22 +1371,42 @@
             const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
             const dateThai = `${thTime.getDate()} ${thaiMonths[thTime.getMonth()]} ${thTime.getFullYear() + 543}`;
 
+            const snapshotData = {
+                date: dateStr,
+                dateThai: dateThai,
+                time: timeStr,
+                lastNav,
+                currentNav,
+                investAmt,
+                buyNav,
+                profitLossAmt,
+                profitLossPercent,
+                createdType: `Automatic_${hourVal}`,
+                timestamp: new Date().toISOString()
+            };
+
+            if (!isCloudEnabled || !currentUser) {
+                snapshotData.id = Date.now().toString();
+                const historyList = JSON.parse(localStorage.getItem('scbsemi_history') || '[]');
+                historyList.push(snapshotData);
+                localStorage.setItem('scbsemi_history', JSON.stringify(historyList));
+                loadLocalDataFallback(); 
+                addLog(`[ระบบ] บันทึกรายงานพอร์ตอัตโนมัติรอบเวลา ${timeStr} น. (ลงเครื่อง)`, "text-scbGold");
+                
+                // ถัดไปเอาค่าล่าสุดมาใส่แทนสำหรับวันใหม่ (Auto rollover current to lastNav)
+                document.getElementById('lastNav').value = currentNav.toFixed(4);
+                window.savePortfolioSettingsSilent();
+                return;
+            }
+
             try {
                 const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'history');
-                await addDoc(colRef, {
-                    date: dateStr,
-                    dateThai: dateThai,
-                    time: timeStr,
-                    lastNav,
-                    currentNav,
-                    investAmt,
-                    buyNav,
-                    profitLossAmt,
-                    profitLossPercent,
-                    createdType: `Automatic_${hourVal}`,
-                    timestamp: new Date().toISOString()
-                });
+                await addDoc(colRef, snapshotData);
                 addLog(`[ระบบ] บันทึกรายงานพอร์ตอัตโนมัติรอบเวลา ${timeStr} น. เรียบร้อยแล้ว`, "text-scbGold");
+                
+                // ถัดไปเอาค่าล่าสุดมาใส่แทนสำหรับวันใหม่ (Auto rollover current to lastNav)
+                document.getElementById('lastNav').value = currentNav.toFixed(4);
+                window.savePortfolioSettingsSilent();
             } catch (err) {
                 console.error("Auto snapshot error", err);
             }
@@ -1393,7 +1453,7 @@
                     document.getElementById('lastNav').value = scbamNav.toFixed(4);
                     addLog(`[SCBAM] ดึงข้อมูลสำเร็จ! ได้ราคา NAV ล่าสุดคือ ฿${scbamNav.toFixed(4)}`, "text-scbGold");
                     window.calculatePortfolio();
-                    savePortfolioSettingsSilent();
+                    window.savePortfolioSettingsSilent();
                 } else {
                     throw new Error("NAV value missing in document pattern");
                 }
