@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCBSEMI Real-Time Portfolio Tracker & Cloud Vault</title>
+    <title>SCBSEMI Real-Time Portfolio Tracker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts (Prompt & Sarabun) -->
@@ -83,7 +83,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-bold tracking-tight text-white">SCBSEMI <span class="text-scbGold">Real-Time</span></h1>
-                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">v3.3 (Stable Fix)</span>
+                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">v3.4 (Vercel Ready)</span>
                     </div>
                     <p class="text-xs text-slate-400">อิงดัชนีกองทุนหลัก VanEck Semiconductor ETF (SMH)</p>
                 </div>
@@ -97,13 +97,13 @@
                         <span id="statusGlow" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
                         <span id="statusDot" class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
                     </span>
-                    <span id="statusText" class="text-xs font-semibold text-slate-300">กำลังเชื่อมต่อระบบคลาวด์...</span>
+                    <span id="statusText" class="text-xs font-semibold text-slate-300">กำลังประมวลผลระบบ...</span>
                 </div>
 
                 <!-- Clock -->
                 <div class="text-right hidden md:block">
                     <p id="thaiClock" class="font-mono text-sm font-bold text-slate-200">00:00:00 THA</p>
-                    <p class="text-[10px] text-slate-500">รายงานเวลาอัตโนมัติ: 00:00 และ 05:00 น.</p>
+                    <p class="text-[10px] text-slate-500">เวลาประเทศไทย (Bangkok)</p>
                 </div>
             </div>
         </div>
@@ -175,13 +175,13 @@
                 </div>
             </div>
 
-            <!-- Portfolio Performance Card (Now Synced with Firestore) -->
+            <!-- Portfolio Performance Card -->
             <div class="bg-gradient-to-b from-indigo-950/20 to-cardBg border border-indigo-500/20 rounded-2xl p-4 shadow-xl shadow-black/30 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="text-slate-300 text-xs font-bold flex items-center gap-1.5">
                             <i class="fa-solid fa-wallet text-scbGold"></i>
-                            พอร์ตการลงทุน (เชื่อมต่อคลาวด์)
+                            พอร์ตการลงทุน
                         </h3>
                         <button onclick="window.savePortfolioSettings()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 transition">
                             <i class="fa-solid fa-cloud-arrow-up mr-1"></i>บันทึกพอร์ต
@@ -372,7 +372,7 @@
                     </thead>
                     <tbody id="historyTableBody" class="divide-y divide-slate-800/40 text-sm font-mono">
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-slate-500 italic">กำลังดึงข้อมูลประวัติพอร์ตคลาวด์...</td>
+                            <td colspan="6" class="py-8 text-center text-slate-500 italic">กำลังอัปเดตข้อมูลตารางประวัติ...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -388,8 +388,8 @@
                     <p>iNAV (Indicative Net Asset Value) เป็นราคาประเมินระหว่างวันที่สะท้อนความผันผวนของราคาหุ้นในพอร์ตแบบเรียลไทม์ เนื่องจากราคาอย่างเป็นทางการของกองทุน SCBSEMI จะประกาศเพียงวันละครั้งในช่วงค่ำหลังจากรวมราคาปิดเสร็จแล้ว</p>
                 </div>
                 <div>
-                    <p class="mb-2"><strong>2. เงื่อนไขการเก็บบันทึกประวัติคลาวด์</strong></p>
-                    <p>เมื่อผู้ใช้เปิดแอปพลิเคชันนี้ทิ้งไว้ ระบบจะตรวจสอบเวลาอย่างเที่ยงตรงตามเวลาประเทศไทย และทำภารกิจส่งยอดประเมิน NAV รวมถึงมูลค่าพอร์ตของคุณเก็บเข้าฐานข้อมูล Firestore คลาวด์อัตโนมัติในเวลา <strong>00:00 น. และ 05:00 น.</strong></p>
+                    <p class="mb-2"><strong>2. การใช้งานบน Vercel (โหมดออฟไลน์)</strong></p>
+                    <p>ระบบตรวจพบว่าใช้งานภายนอกเครือข่ายฐานข้อมูล จึงปรับสถานะเป็นออฟไลน์เพื่อรักษาความเสถียร คุณยังสามารถดึงราคาสด วาดกราฟ และใช้งานเครื่องมือคำนวณพอร์ตได้ครบถ้วน 100% แต่การตั้งค่าจะถูกลบเมื่อปิดเบราว์เซอร์</p>
                 </div>
             </div>
         </div>
@@ -410,7 +410,7 @@
         </div>
     </footer>
 
-    <!-- Consolidated Unified Script Module -->
+    <!-- Consolidated Unified Script Module with Graceful Firebase Degradation -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -418,35 +418,50 @@
 
         // Global State variables
         window.latestNAVChange = 0;
-        let isBrokerPulsing = true; // Enabled by default to make the UI tick like a live broker!
+        let isBrokerPulsing = true;
         let brokerPulseTimer = null;
-        let activeWidgetTicker = "AMD"; // Default selected active widget ticker
+        let activeWidgetTicker = "AMD";
         let currentUser = null;
-        let lastAutoSaveKey = ""; // e.g. "YYYY-MM-DD-HH"
+        let lastAutoSaveKey = "";
         let updateTimer = null;
         let isSimulationMode = false;
         let simIntervalTimer = null;
+        let isCloudEnabled = false;
 
-        // Fallback Firebase Configuration
-        let firebaseConfig = {};
+        // Firebase Fallback logic (Graceful fallback when deployed to Vercel without Config)
+        let firebaseConfig = {
+            // 🔴 หากนำไปรันบน Vercel และต้องการใช้คลาวด์ ให้นำ Firebase Config มาใส่ตรงนี้
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+
         try {
-            firebaseConfig = JSON.parse(__firebase_config);
+            // เช็คว่ารันในระบบ Sandbox / Canvas หรือไม่
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
         } catch (e) {
-            console.warn("Using fallback environment credentials...");
-            firebaseConfig = {
-                apiKey: "",
-                authDomain: "scbsemi-realtime-tracker.firebaseapp.com",
-                projectId: "scbsemi-realtime-tracker",
-                storageBucket: "scbsemi-realtime-tracker.appspot.com",
-                messagingSenderId: "12345",
-                appId: "1:12345:web:12345"
-            };
+            console.warn("Running outside of Canvas environment.");
         }
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        let app, auth, db;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'scbsemi-tracker-cloud';
+
+        // Initialize Firebase ONLY IF valid config with API key is provided
+        if (firebaseConfig && firebaseConfig.apiKey !== "") {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isCloudEnabled = true;
+            } catch (error) {
+                console.error("Firebase initialization bypassed:", error);
+            }
+        }
 
         // Default locked weights matching the SCBAM PDF report (Top 10 holdings of SMH)
         const DEFAULT_HOLDINGS = [
@@ -482,16 +497,16 @@
                 const now = audioCtx.currentTime;
                 if (isUp) {
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(523.25, now); // C5
-                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
                     gain.gain.setValueAtTime(0.08, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
                     osc.start(now);
                     osc.stop(now + 0.3);
                 } else {
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(392.00, now); // G4
-                    osc.frequency.setValueAtTime(311.13, now + 0.1); // Eb4
+                    osc.frequency.setValueAtTime(392.00, now);
+                    osc.frequency.setValueAtTime(311.13, now + 0.1);
                     gain.gain.setValueAtTime(0.08, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
                     osc.start(now);
@@ -541,13 +556,11 @@
             if (clockEl) clockEl.innerText = format + ' THA';
         }
 
-        // Handle exchange rate input changes without full rebuilds
         window.onFXRateChange = function() {
             updateTHBConversionDisplays();
             window.calculateNAVChange();
         }
 
-        // Inline updater for the "≈ x,xxx.xx บ." elements in the table
         function updateTHBConversionDisplays() {
             const currentFXRate = parseFloat(document.getElementById('usdThbRate').value) || 32.84;
             holdings.forEach(stock => {
@@ -559,7 +572,6 @@
             });
         }
 
-        // Build Table rows in HTML with secondary THB conversion label and highlighting classes
         function buildTable() {
             const tableBody = document.getElementById('holdingsTableBody');
             tableBody.innerHTML = '';
@@ -570,7 +582,6 @@
                 const tr = document.createElement('tr');
                 tr.id = `row-${stock.ticker}`;
                 
-                // Add conditional classes based on selection
                 const isActive = stock.ticker === activeWidgetTicker;
                 tr.className = isActive 
                     ? "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer"
@@ -578,11 +589,9 @@
                 
                 tr.onclick = function() { window.changeWidgetTicker(stock.ticker); };
 
-                // Determine trend color
                 const trendColor = stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400';
                 const trendSign = stock.changePercent >= 0 ? '+' : '';
 
-                // Calculate fund impact (Contribution)
                 const impactVal = (stock.changePercent * (stock.weight / 100));
                 const impactText = (impactVal >= 0 ? '+' : '') + impactVal.toFixed(3) + '%';
                 const impactColor = impactVal >= 0 ? 'text-emerald-400/90' : 'text-red-400/90';
@@ -624,7 +633,6 @@
             });
         }
 
-        // Generate dynamic SVG sparkline to represent price trend (Clean and bounded to prevent crazy spikes)
         function generateSparklineSVG(history, isPositive) {
             if (!history || history.length < 2) {
                 return `
@@ -640,11 +648,11 @@
             
             const points = history.map((val, i) => {
                 const x = (i / (history.length - 1)) * 100;
-                const y = 25 - ((val - min) / range) * 20; // Maintain margin inside box (height 30)
+                const y = 25 - ((val - min) / range) * 20; 
                 return `${x.toFixed(1)},${y.toFixed(1)}`;
             }).join(' ');
 
-            const color = isPositive ? '#34d399' : '#f87171'; // emerald-400 / red-400
+            const color = isPositive ? '#34d399' : '#f87171';
             
             return `
                 <svg viewBox="0 0 100 30" class="w-full h-full">
@@ -653,39 +661,33 @@
             `;
         }
 
-        // Broker Ticking Engine: Creates fluid, micro fluctuations to emulate active market streaming
         function startPulsingLoop() {
             if (brokerPulseTimer) clearInterval(brokerPulseTimer);
             
             brokerPulseTimer = setInterval(() => {
-                // Only run pulsing if broker pulsing is active, NOT in full-sim mode, and we have initialized prices
                 if (!isBrokerPulsing || isSimulationMode) return;
 
                 holdings.forEach(stock => {
                     if (stock.price === 0) return;
 
-                    // Micro-change between -0.04% and +0.04% to represent real-time bid/ask fluctuations
                     const oldPrice = stock.price;
                     const changePct = (Math.random() * 0.08) - 0.04; 
                     
                     stock.price = stock.price * (1 + (changePct / 100));
                     stock.changePercent += changePct;
                     
-                    // Push to history queue and shift oldest out (Maintain strict max length of 30 points)
                     stock.history.push(stock.price);
                     if (stock.history.length > 30) {
                         stock.history.shift();
                     }
 
-                    // Update values on table live
                     updateUIElements(stock, oldPrice);
                 });
 
                 window.calculateNAVChange();
-            }, 2500); // Pulse every 2.5 seconds to feel live without lagging browser
+            }, 2500);
         }
 
-        // Calculate and refresh the Estimated NAV Change (Weights are locked matching the PDF)
         window.calculateNAVChange = function() {
             let totalTop10Weight = 0;
             let weightedChange = 0;
@@ -694,7 +696,6 @@
                 totalTop10Weight += stock.weight;
                 weightedChange += (stock.changePercent * (stock.weight / 100));
 
-                // Update row's individual impact
                 const rowImpactCell = document.getElementById(`impact-${stock.ticker}`);
                 if (rowImpactCell) {
                     const impactVal = stock.changePercent * (stock.weight / 100);
@@ -704,12 +705,10 @@
                 }
             });
 
-            // Adjust for remaining assets (Assuming they track the average performance of top 10 as index tracking)
             const remainingWeight = 100 - totalTop10Weight;
             const avgTop10Change = totalTop10Weight > 0 ? (weightedChange / (totalTop10Weight / 100)) : 0;
             const remainingChange = avgTop10Change * (remainingWeight / 100);
             
-            // Total iNAV (Top 10 + remaining components)
             let totalNAVChange = weightedChange + remainingChange;
             window.latestNAVChange = totalNAVChange;
 
@@ -742,14 +741,12 @@
             window.calculatePortfolio();
         }
 
-        // Portfolio Calculator Function
         window.calculatePortfolio = function() {
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
             const changePercent = window.latestNAVChange || 0;
 
-            // 1. Calculate current estimated NAV (iNAV)
             const currentNav = lastNav * (1 + (changePercent / 100));
             
             const portCurrentNavEl = document.getElementById('portCurrentNav');
@@ -758,13 +755,11 @@
             
             if (portCurrentNavEl) portCurrentNavEl.innerText = `฿${currentNav.toFixed(4)}`;
 
-            // 2. Calculate investment performance
             if (buyNav > 0 && investAmt > 0) {
                 const currentValue = investAmt * (currentNav / buyNav);
                 const profitAmt = currentValue - investAmt;
                 const profitPercent = ((currentNav - buyNav) / buyNav) * 100;
 
-                // Format numbers to localized THB strings
                 if (portCurrentValueEl) portCurrentValueEl.innerText = `฿${currentValue.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
                 
                 const sign = profitAmt >= 0 ? '+' : '';
@@ -783,7 +778,6 @@
             }
         }
 
-        // Highly robust Proxy rotation fetcher to prevent 'Failed to fetch' CORS blockages
         async function fetchWithProxy(targetUrl) {
             const proxies = [
                 (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
@@ -798,7 +792,6 @@
                     
                     const data = await response.json();
                     
-                    // Decrypt AllOrigins wrap-around if present
                     if (data && typeof data === 'object' && data.contents !== undefined) {
                         try {
                             return JSON.parse(data.contents);
@@ -814,13 +807,11 @@
             throw new Error("All proxy servers are currently unresponsive");
         }
 
-        // Fetch prices from Free Public Yahoo Finance API with CORS Proxy wrapper and Cache-Buster
         window.fetchAllData = async function() {
-            if (isSimulationMode) return; // Ignore real fetches if in Simulation mode
+            if (isSimulationMode) return;
 
             addLog("กำลังขอราคาสดล่าสุดจาก API สหรัฐ...", "info");
             
-            // Fetch SMH Index first for reference via CORS Proxy (With Cache Buster and 1-Minute granularity)
             try {
                 const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/SMH?range=1d&interval=1m&_=${Date.now()}`;
                 const smhData = await fetchWithProxy(targetUrl);
@@ -842,10 +833,9 @@
                     }
                 }
             } catch (e) {
-                console.warn("SMH index benchmark fetch temporary failure. Operating under fallback values gracefully.");
+                console.warn("SMH index fetch fallback.");
             }
 
-            // Fetch Top 10 Stocks via CORS Proxy (With Cache Buster and 1-Minute granularity)
             for (let i = 0; i < holdings.length; i++) {
                 const stock = holdings[i];
                 try {
@@ -857,11 +847,9 @@
                         const latestPrice = meta.regularMarketPrice;
                         const prevClose = meta.previousClose || meta.chartPreviousClose;
                         
-                        // Extract today's history points for Sparkline
                         const quotes = result.indicators?.quote?.[0]?.close || [];
                         let cleanHistory = quotes.filter(p => p !== null && p !== undefined);
                         
-                        // STRICT BUGFIX: Slice history to a maximum of 30 points to align with simulated history length
                         if (cleanHistory.length > 30) {
                             cleanHistory = cleanHistory.slice(-30);
                         } else if (cleanHistory.length === 0) {
@@ -873,13 +861,11 @@
                         stock.changePercent = ((latestPrice - prevClose) / prevClose) * 100;
                         stock.history = cleanHistory;
 
-                        // Visual flash indicator
                         updateUIElements(stock, oldPrice);
                     } else {
                         throw new Error('Invalid payload format');
                     }
                 } catch (error) {
-                    // Gracefully switch to simulated broker pricing updates upon API rate-limit/downtime
                     fallbackMockUpdate(stock);
                 }
             }
@@ -887,7 +873,6 @@
             window.calculateNAVChange();
         }
 
-        // Fallback or Simulated update if API fails or when Simulation mode is on
         function fallbackMockUpdate(stock) {
             if (stock.price === 0) {
                 const initialMockPrice = {
@@ -895,12 +880,11 @@
                     'ASML': 982.50, 'INTC': 30.15, 'LRCX': 918.40, 'AMAT': 212.80, 'TXN': 188.50
                 };
                 stock.price = initialMockPrice[stock.ticker] || 100;
-                stock.changePercent = (Math.random() * 4) - 2; // -2% to +2%
+                stock.changePercent = (Math.random() * 4) - 2;
                 stock.history = [stock.price * 0.98, stock.price * 0.99, stock.price * (1 + (stock.changePercent/100))];
             } else {
-                // Dynamic fluctuation (Strictly keep the history at exactly 30 points)
                 const oldPrice = stock.price;
-                const changePct = (Math.random() * 0.3) - 0.14; // Tiny drift -0.14% to +0.16%
+                const changePct = (Math.random() * 0.3) - 0.14; 
                 stock.price = stock.price * (1 + (changePct / 100));
                 stock.changePercent += changePct;
                 
@@ -913,7 +897,6 @@
             }
         }
 
-        // Apply visual updates, update live THB price, and plays sound alerts
         function updateUIElements(stock, oldPrice) {
             const priceCell = document.getElementById(`price-${stock.ticker}`);
             const thbPriceCell = document.getElementById(`thb-price-${stock.ticker}`);
@@ -929,7 +912,6 @@
                     thbPriceCell.innerText = `≈ ${currentThbPrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บ.`;
                 }
 
-                // Add Flash Glow if price changed
                 if (oldPrice > 0 && stock.price !== oldPrice) {
                     const isUp = stock.price > oldPrice;
                     priceCell.classList.add(isUp ? 'glow-green' : 'glow-red');
@@ -937,8 +919,7 @@
                         priceCell.classList.remove('glow-green', 'glow-red');
                     }, 800);
 
-                    // Add logs for significant updates
-                    const threshold = 0.05; // 0.05% change inside a single tick
+                    const threshold = 0.05;
                     const tickDiffPct = ((stock.price - oldPrice) / oldPrice) * 100;
                     if (Math.abs(tickDiffPct) >= threshold) {
                         const trendSign = tickDiffPct >= 0 ? '▲' : '▼';
@@ -960,13 +941,11 @@
             }
         }
 
-        // Load TradingView Widget (completely recreate container and load from preloaded SDK)
         function loadTradingViewWidget(ticker) {
             const container = document.getElementById('tradingview_widget_container');
             if (!container) return;
-            container.innerHTML = ''; // clear
+            container.innerHTML = ''; 
 
-            // Create fresh inner DIV for TV to bind cleanly
             const innerDiv = document.createElement('div');
             innerDiv.id = 'tv-widget-inner';
             innerDiv.className = 'w-full h-full';
@@ -1004,26 +983,21 @@
                 }
             };
 
-            // If TradingView library is already loaded inside global window object
             if (window.TradingView) {
                 initWidget();
             } else {
-                // Safe Fallback loop in case network delays preloading
                 setTimeout(() => loadTradingViewWidget(ticker), 200);
             }
         }
 
-        // Switch Chart target & highlight selected active row in the table
         window.changeWidgetTicker = function(ticker) {
             activeWidgetTicker = ticker;
             
-            // STRICT BUGFIX: Safely overwrite the header HTML preserving the ID to ensure it is never destroyed
             const titleEl = document.getElementById('tradingViewTitle');
             if (titleEl) {
                 titleEl.innerHTML = `<i class="fa-solid fa-chart-line text-indigo-400 mr-1.5"></i>กราฟเทคนิคอล: <span id="widgetSymbol">${ticker}</span>`;
             }
             
-            // Remove active classes from SMH benchmark button if not SMH
             const benchmarkBtn = document.getElementById('smhBenchmarkBtn');
             if (ticker === 'SMH') {
                 if (benchmarkBtn) {
@@ -1037,12 +1011,10 @@
                 }
             }
 
-            // Loop and toggle active visual classes on table rows
             const rows = document.querySelectorAll('#holdingsTableBody tr');
             rows.forEach(row => {
                 if (row.id === `row-${ticker}`) {
                     row.className = "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer animate-pulse";
-                    // Brief pulsing animation then solidify
                     setTimeout(() => {
                         row.className = "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer";
                     }, 500);
@@ -1055,7 +1027,6 @@
             addLog("เปลี่ยนกราฟบนแท็บด้านขวาเป็น: " + ticker, "info");
         }
 
-        // Toggle Simulation (For off-market hours)
         window.toggleSimMode = function() {
             isSimulationMode = !isSimulationMode;
             const simBtn = document.getElementById('toggleSimBtn');
@@ -1064,7 +1035,6 @@
             const statusText = document.getElementById('statusText');
 
             if (isSimulationMode) {
-                // Turn ON Simulation
                 simBtn.innerHTML = '<i class="fa-solid fa-circle-pause text-red-400 mr-1.5"></i>ปิดซิม (Sim)';
                 simBtn.classList.remove('bg-slate-800');
                 simBtn.classList.add('bg-amber-950/80', 'text-amber-200', 'border-amber-700/50');
@@ -1076,7 +1046,6 @@
 
                 addLog("เริ่มใช้งานโหมดการจำลองราคาวิ่งอัตโนมัติ (Simulation ON)", "warning");
 
-                // Start High Frequency update loop
                 simIntervalTimer = setInterval(() => {
                     holdings.forEach(stock => {
                         fallbackMockUpdate(stock);
@@ -1085,7 +1054,6 @@
                 }, 1500);
 
             } else {
-                // Turn OFF Simulation
                 simBtn.innerHTML = '<i class="fa-solid fa-circle-play text-amber-400 mr-1.5"></i>จำลอง (Demo)';
                 simBtn.classList.remove('bg-amber-950/80', 'text-amber-200', 'border-amber-700/50');
                 simBtn.classList.add('bg-slate-800');
@@ -1101,7 +1069,6 @@
             }
         }
 
-        // Setup automated update intervals
         window.resetInterval = function() {
             if (updateTimer) {
                 clearInterval(updateTimer);
@@ -1115,8 +1082,22 @@
             }
         }
 
-        // Authentication Setup
+        // Initialize Authentication (Conditionally runs Firebase if Key exists)
         const initAuth = async () => {
+            if (!isCloudEnabled) {
+                const statusTxtEl = document.getElementById('statusText');
+                const syncIndEl = document.getElementById('syncIndicator');
+                if (statusTxtEl) statusTxtEl.innerText = "รันบนโหมด Vercel (ออฟไลน์คลาวด์)";
+                if (syncIndEl) {
+                    syncIndEl.classList.remove('border-slate-800');
+                    syncIndEl.classList.add('border-slate-700');
+                    document.getElementById('statusGlow').className = "";
+                    document.getElementById('statusDot').className = "relative inline-flex rounded-full h-2 w-2 bg-slate-500";
+                }
+                renderHistoryTable([]); // Show Empty State
+                return;
+            }
+
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -1135,33 +1116,33 @@
             }
         };
 
-        // Listen for authentication changes
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                const statusTxtEl = document.getElementById('statusText');
-                const syncIndEl = document.getElementById('syncIndicator');
-                
-                if (statusTxtEl) statusTxtEl.innerText = "เชื่อมต่อคลาวด์แล้ว";
-                if (syncIndEl) {
-                    syncIndEl.classList.remove('border-slate-800');
-                    syncIndEl.classList.add('border-emerald-800/80');
+        if (isCloudEnabled) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    const statusTxtEl = document.getElementById('statusText');
+                    const syncIndEl = document.getElementById('syncIndicator');
+                    
+                    if (statusTxtEl) statusTxtEl.innerText = "เชื่อมต่อคลาวด์แล้ว";
+                    if (syncIndEl) {
+                        syncIndEl.classList.remove('border-slate-800');
+                        syncIndEl.classList.add('border-emerald-800/80');
+                        document.getElementById('statusGlow').className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                        document.getElementById('statusDot').className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                    }
+                    
+                    setupRealtimeSync(user.uid);
+                } else {
+                    currentUser = null;
+                    const statusTxtEl = document.getElementById('statusText');
+                    if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์";
                 }
-                
-                // Fetch User settings & history list
-                setupRealtimeSync(user.uid);
-            } else {
-                currentUser = null;
-                const statusTxtEl = document.getElementById('statusText');
-                if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์";
-            }
-        });
+            });
+        }
 
-        // Setup real-time listeners for Settings & History
         function setupRealtimeSync(userId) {
-            if (!userId) return;
+            if (!isCloudEnabled || !userId) return;
 
-            // 1. Portfolio settings listener
             const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'portfolio', 'settings');
             onSnapshot(settingsDocRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -1171,14 +1152,12 @@
                     document.getElementById('lastNav').value = data.lastNav || 10.5000;
                     window.calculatePortfolio();
                 } else {
-                    // Create default doc if missing
                     savePortfolioSettingsSilent();
                 }
             }, (err) => {
                 console.error("Failed syncing settings:", err);
             });
 
-            // 2. History collection snapshot listener
             const historyColRef = collection(db, 'artifacts', appId, 'users', userId, 'history');
             onSnapshot(historyColRef, (colSnap) => {
                 const historyList = [];
@@ -1186,11 +1165,10 @@
                     historyList.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Sort history on client side to avoid complex index query requirements (Rule 2 Compliance)
                 historyList.sort((a, b) => {
                     const dateA = a.date + " " + a.time;
                     const dateB = b.date + " " + b.time;
-                    return dateB.localeCompare(dateA); // Newest first
+                    return dateB.localeCompare(dateA); 
                 });
 
                 renderHistoryTable(historyList);
@@ -1199,11 +1177,10 @@
             });
         }
 
-        // Render History snapshot table
         function renderHistoryTable(records) {
             const body = document.getElementById('historyTableBody');
             if (!body) return;
-            if (records.length === 0) {
+            if (!records || records.length === 0) {
                 body.innerHTML = `
                     <tr>
                         <td colspan="6" class="py-8 text-center text-slate-500 italic">ไม่มีข้อมูลการบันทึกสถานะพอร์ตย้อนหลัง</td>
@@ -1240,10 +1217,9 @@
             });
         }
 
-        // Global functions tied to window object for access inside inline events
         window.savePortfolioSettings = async function() {
-            if (!currentUser) {
-                alert("ระบบคลาวด์ยังไม่พร้อมใช้งานชั่วคราว");
+            if (!isCloudEnabled || !currentUser) {
+                addLog("ระบบคลาวด์ปิดการทำงานเมื่อรันภายนอก (Vercel Mode)", "warning");
                 return;
             }
 
@@ -1263,7 +1239,7 @@
         };
 
         async function savePortfolioSettingsSilent() {
-            if (!currentUser) return;
+            if (!isCloudEnabled || !currentUser) return;
             const investAmt = parseFloat(document.getElementById('investAmt').value) || 10000;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 10.0000;
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 10.5000;
@@ -1275,10 +1251,9 @@
             }
         }
 
-        // Action to record manual snapshot
         window.saveManualSnapshot = async function() {
-            if (!currentUser) {
-                addLog("ไม่สามารถบันทึกได้เนื่องจากระบบฐานข้อมูลออฟไลน์", "warning");
+            if (!isCloudEnabled || !currentUser) {
+                addLog("ไม่สามารถเซฟประวัติได้ (ใช้งานโหมด Vercel ออฟไลน์)", "warning");
                 return;
             }
 
@@ -1292,12 +1267,11 @@
             const profitLossAmt = currentValue - investAmt;
             const profitLossPercent = buyNav > 0 ? (((currentNav - buyNav) / buyNav) * 100) : 0;
 
-            // Thai Date / Time formatter
             const now = new Date();
             const thTimeStr = now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"});
             const thTime = new Date(thTimeStr);
             const dateStr = thTime.toISOString().split('T')[0];
-            const timeStr = thTime.toTimeString().split(' ')[0].substring(0, 5); // "HH:MM"
+            const timeStr = thTime.toTimeString().split(' ')[0].substring(0, 5); 
             
             const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
             const dateThai = `${thTime.getDate()} ${thaiMonths[thTime.getMonth()]} ${thTime.getFullYear() + 543}`;
@@ -1326,9 +1300,8 @@
             }
         };
 
-        // Delete recorded snapshot
         window.deleteHistoryRecord = async function(docId) {
-            if (!currentUser || !docId) return;
+            if (!isCloudEnabled || !currentUser || !docId) return;
             if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลประวัติ Snapshot นี้ออกอย่างถาวร?")) return;
 
             try {
@@ -1341,9 +1314,8 @@
             }
         };
 
-        // Automated Snapshot Saver at 00:00 and 05:00 THA
         window.triggerAutomaticTimeSnapshot = async function(dateStr, timeStr, hourVal) {
-            if (!currentUser) return;
+            if (!isCloudEnabled || !currentUser) return;
 
             const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
             const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
@@ -1380,7 +1352,6 @@
             }
         };
 
-        // Scrape SCBAM official NAV
         window.fetchScbamNAV = async function() {
             addLog("กำลังร้องขอราคาจากเว็บไซต์ทางการ SCBAM...", "info");
             
@@ -1392,7 +1363,6 @@
                     throw new Error("Unable to reach SCBAM server or HTML payload is too short");
                 }
 
-                // 1. Try parsing regex mapping specifically to SCBSEMI(A) or standard NAV tables
                 const navRegex = /SCBSEMI\(A\).*?(\d{1,2}\.\d{4})/i;
                 let match = html.match(navRegex);
                 let scbamNav = null;
@@ -1400,7 +1370,6 @@
                 if (match) {
                     scbamNav = parseFloat(match[1]);
                 } else {
-                    // Alternate: Search for standard 4-decimal points in tables typically belonging to fund prices
                     const generalNavRegex = />(\d{1,2}\.\d{4})</g;
                     let matches = [...html.matchAll(generalNavRegex)];
                     if (matches && matches.length > 0) {
@@ -1414,7 +1383,6 @@
                 }
 
                 if (!scbamNav) {
-                    // Try parsing with standard 'ราคาหน่วยลงทุน' label mapping
                     const alternateMatch = html.match(/(?:ราคาหน่วยลงทุน|NAV).*?(\d{1,2}\.\d{4})/i);
                     if (alternateMatch) {
                         scbamNav = parseFloat(alternateMatch[1]);
@@ -1436,7 +1404,6 @@
             }
         };
 
-        // Add Log Item helper
         function addLog(text, type = "normal") {
             const logContainer = document.getElementById('logContainer');
             if (!logContainer) return;
@@ -1468,15 +1435,12 @@
             }
         }
 
-        // --- THE FIX: RUN INITIALIZATION DIRECTLY ---
-        // Since <script type="module"> is deferred and loads after HTML parsing is complete,
-        // we do NOT need to wait for 'DOMContentLoaded' which may have already fired.
+        // --- APP INITIALIZATION ---
         function initApp() {
             updateClock();
             setInterval(updateClock, 1000);
             
             buildTable();
-            // Start with active symbol AMD highlighted
             window.changeWidgetTicker("AMD");
             
             window.fetchAllData();
@@ -1484,7 +1448,6 @@
             startPulsingLoop();
             initAuth();
             
-            // Realtime Clock check to trigger auto saves at 00:00 and 05:00 Thailand time
             setInterval(() => {
                 const now = new Date();
                 const thTimeStr = now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"});
@@ -1493,9 +1456,8 @@
                 const hh = thTime.getHours();
                 const mm = thTime.getMinutes();
                 const ss = thTime.getSeconds();
-                const dateStr = thTime.toISOString().split('T')[0]; // "YYYY-MM-DD"
+                const dateStr = thTime.toISOString().split('T')[0]; 
                 
-                // Check for exactly 00:00:00 or 05:00:00
                 if ((hh === 0 && mm === 0 && ss === 0) || (hh === 5 && mm === 0 && ss === 0)) {
                     const autoSaveKey = `${dateStr}-${hh}`;
                     if (lastAutoSaveKey !== autoSaveKey) {
@@ -1507,7 +1469,7 @@
             }, 1000);
         }
 
-        // Call immediately instead of using event listener
+        // Call immediately instead of using event listener to prevent infinite loading screens
         initApp();
 
     </script>
