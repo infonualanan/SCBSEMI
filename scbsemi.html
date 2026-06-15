@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCBSEMI Real-Time Portfolio Tracker & Cloud Vault</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Prompt & Sarabun) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- TradingView Widget SDK (Preloaded to ensure instant responsive switches) -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        scbPurple: '#4e2e81',
+                        scbGold: '#febc11',
+                        vaneckBlue: '#004b87',
+                        darkBg: '#090d16',
+                        cardBg: '#131a2a',
+                    },
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #f1f5f9;
+        }
+        .glow-green {
+            animation: glowGreen 0.8s ease-out;
+        }
+        .glow-red {
+            animation: glowRed 0.8s ease-out;
+        }
+        @keyframes glowGreen {
+            0% { background-color: rgba(34, 197, 94, 0.4); }
+            100% { background-color: transparent; }
+        }
+        @keyframes glowRed {
+            0% { background-color: rgba(239, 68, 68, 0.4); }
+            100% { background-color: transparent; }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col text-slate-100">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-800 bg-cardBg/90 backdrop-blur-md sticky top-0 z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- Brand Logo and Name -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-scbPurple to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span class="text-white font-bold text-lg">S</span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl font-bold tracking-tight text-white">SCBSEMI <span class="text-scbGold">Real-Time</span></h1>
+                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">v3.3 (Stable Fix)</span>
+                    </div>
+                    <p class="text-xs text-slate-400">อิงดัชนีกองทุนหลัก VanEck Semiconductor ETF (SMH)</p>
+                </div>
+            </div>
+
+            <!-- Market Status & Options -->
+            <div class="flex flex-wrap items-center gap-3 sm:gap-4 justify-center">
+                <!-- Sync Indicator -->
+                <div id="syncIndicator" class="flex items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <span class="relative flex h-2 w-2 mr-2">
+                        <span id="statusGlow" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                        <span id="statusDot" class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                    </span>
+                    <span id="statusText" class="text-xs font-semibold text-slate-300">กำลังเชื่อมต่อระบบคลาวด์...</span>
+                </div>
+
+                <!-- Clock -->
+                <div class="text-right hidden md:block">
+                    <p id="thaiClock" class="font-mono text-sm font-bold text-slate-200">00:00:00 THA</p>
+                    <p class="text-[10px] text-slate-500">รายงานเวลาอัตโนมัติ: 00:00 และ 05:00 น.</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 space-y-6">
+        
+        <!-- Summary Dashboard (Estimated NAV Box) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Estimated SCBSEMI Change Card -->
+            <div class="bg-gradient-to-b from-cardBg to-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow-xl shadow-black/30">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <i class="fa-solid fa-chart-line text-6xl text-white"></i>
+                </div>
+                <h3 class="text-slate-400 text-sm font-medium mb-1">คาดการณ์ NAV คืนนี้ (iNAV)</h3>
+                <div class="flex items-baseline gap-2">
+                    <span id="navChangeValue" class="text-3xl font-extrabold font-mono text-emerald-400 transition-colors duration-300">+0.00%</span>
+                    <span id="navArrow" class="text-xl text-emerald-400"><i class="fa-solid fa-arrow-trend-up"></i></span>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">คำนวณจากความเคลื่อนไหวล่าสุดของหุ้น 10 ตัวแรก</p>
+                <div class="mt-3 bg-slate-950/50 rounded-lg p-2 border border-slate-800/50">
+                    <div class="flex justify-between text-[11px] text-slate-400">
+                        <span>น้ำหนักหุ้นที่คำนวณ (Fixed):</span>
+                        <span id="totalCalculatedWeight" class="font-mono font-bold text-scbGold">78.37%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMH ETF Benchmark -->
+            <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow-xl shadow-black/30">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <i class="fa-solid fa-gem text-6xl text-white"></i>
+                </div>
+                <h3 class="text-slate-400 text-sm font-medium mb-1">กองทุนหลัก SMH ETF</h3>
+                <div class="flex items-baseline gap-2">
+                    <span id="smhPrice" class="text-2xl font-bold font-mono text-white">$---.--</span>
+                    <span id="smhChange" class="text-xs font-mono text-emerald-400">+--.-- (+--.--)</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">ราคาปัจจุบันในตลาดหุ้นต่างประเทศ</p>
+                <div class="mt-3 flex gap-2">
+                    <button id="smhBenchmarkBtn" onclick="window.changeWidgetTicker('SMH')" class="text-xs bg-indigo-900/30 text-indigo-300 hover:bg-indigo-800/40 border border-indigo-700/30 px-3 py-1 rounded-md transition duration-200 w-full text-center">
+                        <i class="fa-solid fa-chart-area mr-1"></i> ดูกราฟเทคนิคอล SMH
+                    </button>
+                </div>
+            </div>
+
+            <!-- FX Rate Impact & Control -->
+            <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-xl shadow-black/30">
+                <h3 class="text-slate-400 text-sm font-medium mb-1">อัตราแลกเปลี่ยน (USD/THB)</h3>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <div class="text-xl font-bold font-mono text-slate-200 flex items-center gap-1.5">
+                        <span>฿</span>
+                        <input id="usdThbRate" type="number" step="0.01" value="32.84" onchange="window.onFXRateChange()" class="w-24 bg-slate-950 text-slate-200 border border-slate-700 rounded px-2 py-0.5 text-center font-mono focus:outline-none focus:border-scbGold">
+                    </div>
+                    <span class="text-xs text-slate-400">บาท/ดอลลาร์</span>
+                </div>
+                
+                <!-- Quick Settings Toggle inside FX card -->
+                <div class="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap gap-2">
+                    <button id="toggleSimBtn" onclick="window.toggleSimMode()" class="flex-1 text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 px-2 py-1.5 rounded-lg font-medium transition duration-200">
+                        <i class="fa-solid fa-circle-play text-amber-400 mr-1.5"></i>จำลอง (Demo)
+                    </button>
+                    <button id="pulseBtn" onclick="window.toggleBrokerPulsing()" class="text-xs bg-indigo-600 text-white border border-indigo-500 px-2.5 py-1.5 rounded-lg font-medium transition duration-200" title="กระพริบราคาต่อเนื่องแบบโบรกเกอร์">
+                        <i id="pulseIcon" class="fa-solid fa-bolt mr-1"></i>ติ๊กราคา
+                    </button>
+                    <button id="soundBtn" onclick="window.toggleSound()" class="text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-lg transition duration-200">
+                        <i id="soundIcon" class="fa-solid fa-volume-mute"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Portfolio Performance Card (Now Synced with Firestore) -->
+            <div class="bg-gradient-to-b from-indigo-950/20 to-cardBg border border-indigo-500/20 rounded-2xl p-4 shadow-xl shadow-black/30 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-slate-300 text-xs font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-wallet text-scbGold"></i>
+                            พอร์ตการลงทุน (เชื่อมต่อคลาวด์)
+                        </h3>
+                        <button onclick="window.savePortfolioSettings()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800 transition">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i>บันทึกพอร์ต
+                        </button>
+                    </div>
+                    <!-- Portfolio Inputs -->
+                    <div class="grid grid-cols-3 gap-1.5 mb-3">
+                        <div>
+                            <label class="text-[9px] text-slate-400 block mb-0.5 font-medium">เงินลงทุน (บาท)</label>
+                            <input id="investAmt" type="number" value="10000" oninput="window.calculatePortfolio()" class="w-full bg-slate-950 text-white text-xs border border-slate-700 rounded px-1.5 py-1 text-center font-mono focus:outline-none focus:border-scbPurple">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-slate-400 block mb-0.5 font-medium">NAV ที่ซื้อได้</label>
+                            <input id="buyNav" type="number" step="0.0001" value="10.0000" oninput="window.calculatePortfolio()" class="w-full bg-slate-950 text-white text-xs border border-slate-700 rounded px-1.5 py-1 text-center font-mono focus:outline-none focus:border-scbPurple">
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-slate-400 block mb-0.5 font-medium">NAV วันก่อนหน้า</label>
+                            <input id="lastNav" type="number" step="0.0001" value="10.5000" oninput="window.calculatePortfolio()" class="w-full bg-slate-950 text-white text-xs border border-slate-700 rounded px-1.5 py-1 text-center font-mono focus:outline-none focus:border-scbPurple">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Portfolio Outputs -->
+                <div class="space-y-1 bg-slate-950/60 p-2 rounded-lg border border-slate-800 text-[11px]">
+                    <div class="flex justify-between items-center gap-2">
+                        <button onclick="window.fetchScbamNAV()" class="text-[9px] bg-scbPurple/40 text-scbGold hover:bg-scbPurple/60 px-1.5 py-0.5 rounded border border-scbPurple/50 font-bold transition flex items-center gap-1">
+                            <i class="fa-solid fa-cloud-download"></i>ดึงราคาจาก SCBAM
+                        </button>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400">iNAV: </span>
+                            <span id="portCurrentNav" class="font-mono font-bold text-scbGold">-</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">มูลค่าพอร์ต:</span>
+                        <span id="portCurrentValue" class="font-mono font-bold text-white">-</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-800 pt-1 mt-1 font-bold">
+                        <span class="text-slate-300">กำไร/ขาดทุน (+/-):</span>
+                        <span id="portProfitLoss" class="font-mono text-slate-300">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Side: Table of Holdings (8 Columns on desktop) -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- Holdings Table Container -->
+                <div class="bg-cardBg border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                    <div class="p-4 bg-slate-900/50 border-b border-slate-800 flex justify-between items-center flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-scbPurple"></span>
+                            <h2 class="text-base font-semibold text-white">ตารางจำลองสัดส่วนหุ้นหลัก Top 10 (ล็อคค่าตามหนังสือชี้ชวน)</h2>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400">ดึงอัปเดตอัตโนมัติ:</span>
+                            <select id="updateInterval" onchange="window.resetInterval()" class="bg-slate-950 border border-slate-700 text-xs text-slate-300 rounded px-2 py-1 focus:outline-none focus:border-scbPurple">
+                                <option value="5000">ทุก 5 วินาที</option>
+                                <option value="15000" selected>ทุก 15 วินาที</option>
+                                <option value="30000">ทุก 30 วินาที</option>
+                                <option value="0">แมนวล (ไม่ดึงออโต้)</option>
+                            </select>
+                            <button onclick="window.fetchAllData()" class="p-1 px-2 text-xs bg-scbPurple hover:bg-indigo-700 text-white rounded transition">
+                                <i class="fa-solid fa-rotate"></i> ดึงด่วน
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable table container -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-xs text-slate-400 bg-slate-900/30 uppercase tracking-wider font-mono">
+                                    <th class="py-3 px-4">สัญลักษณ์ / ชื่อบริษัท</th>
+                                    <th class="py-3 px-3 text-right">สัดส่วน (Weight)</th>
+                                    <th class="py-3 px-3 text-right">ราคาล่าสุด ($)</th>
+                                    <th class="py-3 px-3 text-right">เปลี่ยนแปลง (%)</th>
+                                    <th class="py-3 px-3 text-center">กราฟย่อยวันนี้</th>
+                                    <th class="py-3 px-4 text-right">ผลต่อกองทุน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="holdingsTableBody" class="divide-y divide-slate-800/50 text-sm">
+                                <tr>
+                                    <td colspan="6" class="py-8 text-center text-slate-500 italic">กำลังประกอบตารางหุ้นรายตัว...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Charts & Logs (4 Columns on desktop) -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- TradingView Advanced Widget -->
+                <div class="bg-cardBg border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col h-[400px]">
+                    <div class="p-3 bg-slate-900/50 border-b border-slate-800 flex justify-between items-center">
+                        <h2 id="tradingViewTitle" class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i class="fa-solid fa-chart-line text-indigo-400 mr-1.5"></i>กราฟเทคนิคอล: <span id="widgetSymbol">AMD</span>
+                        </h2>
+                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">TradingView</span>
+                    </div>
+                    <div id="tradingview_widget_container" class="flex-grow">
+                        <!-- TradingView widget placeholder -->
+                    </div>
+                </div>
+
+                <!-- Weight Allocation Visualizer -->
+                <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 shadow-xl">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">
+                        <i class="fa-solid fa-chart-pie text-pink-500 mr-1.5"></i>สัดส่วนกลุ่มอุตสาหกรรมในกองทุน
+                    </h3>
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>10 หุ้นหลักที่เราจำลอง (Top 10)</span>
+                                <span id="visualTop10" class="font-mono text-emerald-400 font-bold">78.37%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                <div id="barTop10" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 78.37%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>หุ้นอื่นๆ ที่เหลือ (Remaining)</span>
+                                <span class="font-mono text-slate-300 font-bold">21.61%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                <div class="bg-indigo-600 h-full rounded-full" style="width: 21.61%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>เงินสด/สินทรัพย์อื่น (Cash/Other)</span>
+                                <span class="font-mono text-slate-300 font-bold">0.01%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                                <div class="bg-amber-400 h-full rounded-full" style="width: 0.01%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Price Alert Logs -->
+                <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col h-[200px]">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            <i class="fa-solid fa-list-check text-indigo-400 mr-1.5"></i>บันทึกความเคลื่อนไหวล่าสุด
+                        </h3>
+                        <button onclick="window.clearLogs()" class="text-[10px] text-slate-500 hover:text-slate-400">ล้าง log</button>
+                    </div>
+                    <div id="logContainer" class="flex-grow overflow-y-auto space-y-1.5 font-mono text-xs pr-1">
+                        <p class="text-slate-500 italic">เริ่มต้นระบบ... รอรับข้อมูล</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Records Table Panel -->
+        <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-3 mb-4 gap-3">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-scbGold animate-pulse"></i>
+                        ประวัติการบันทึกสถานะพอร์ตการลงทุน
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">บันทึกอัตโนมัติทุกวันเวลา 00:00 น. และ 05:00 น. (เวลาไทย) และแมนนวลเพื่อติดตามผลกำไรสะสม</p>
+                </div>
+                <button onclick="window.saveManualSnapshot()" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg border border-indigo-500 transition duration-200">
+                    <i class="fa-solid fa-camera mr-1.5"></i>บันทึก Snapshot ปัจจุบัน
+                </button>
+            </div>
+
+            <!-- Scrollable Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-xs text-slate-400 bg-slate-900/30 uppercase tracking-wider font-mono">
+                            <th class="py-3 px-4">วันที่ (THA)</th>
+                            <th class="py-3 px-4">เวลา</th>
+                            <th class="py-3 px-4 text-right">NAV (วันก่อนหน้า)</th>
+                            <th class="py-3 px-4 text-right">NAV (คร่าว ๆ ปัจจุบัน)</th>
+                            <th class="py-3 px-4 text-right">รวม กำไร/ขาดทุน (+/-)</th>
+                            <th class="py-3 px-4 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-800/40 text-sm font-mono">
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-500 italic">กำลังดึงข้อมูลประวัติพอร์ตคลาวด์...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Formula Explainer Modal / Bottom Section -->
+        <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-xl">
+            <h3 class="text-sm font-bold text-white mb-2"><i class="fa-solid fa-circle-info text-scbPurple mr-2"></i>เกี่ยวกับการคิดราคา และ NAV กองทุน SCBSEMI</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-400 leading-relaxed">
+                <div>
+                    <p class="mb-2"><strong>1. iNAV คืออะไร?</strong></p>
+                    <p>iNAV (Indicative Net Asset Value) เป็นราคาประเมินระหว่างวันที่สะท้อนความผันผวนของราคาหุ้นในพอร์ตแบบเรียลไทม์ เนื่องจากราคาอย่างเป็นทางการของกองทุน SCBSEMI จะประกาศเพียงวันละครั้งในช่วงค่ำหลังจากรวมราคาปิดเสร็จแล้ว</p>
+                </div>
+                <div>
+                    <p class="mb-2"><strong>2. เงื่อนไขการเก็บบันทึกประวัติคลาวด์</strong></p>
+                    <p>เมื่อผู้ใช้เปิดแอปพลิเคชันนี้ทิ้งไว้ ระบบจะตรวจสอบเวลาอย่างเที่ยงตรงตามเวลาประเทศไทย และทำภารกิจส่งยอดประเมิน NAV รวมถึงมูลค่าพอร์ตของคุณเก็บเข้าฐานข้อมูล Firestore คลาวด์อัตโนมัติในเวลา <strong>00:00 น. และ 05:00 น.</strong></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-4">
+            <div class="text-center sm:text-left">
+                <p>© 2026 ระบบจำลองพอร์ตกองทุนเซมิคอนดักเตอร์เพื่อใช้ส่วนบุคคล</p>
+                <p class="mt-1">แหล่งข้อมูลอ้างอิง: ข้อมูลเอกสารกองทุนรวม SCBSEMI (VanEck Semiconductor UCITS ETF - SMH)</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="https://www.vaneck.com" target="_blank" class="hover:text-slate-300 transition">VanEck Official</a>
+                <span>|</span>
+                <a href="https://www.scbam.com" target="_blank" class="hover:text-slate-300 transition">SCBAM Official</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Consolidated Unified Script Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global State variables
+        window.latestNAVChange = 0;
+        let isBrokerPulsing = true; // Enabled by default to make the UI tick like a live broker!
+        let brokerPulseTimer = null;
+        let activeWidgetTicker = "AMD"; // Default selected active widget ticker
+        let currentUser = null;
+        let lastAutoSaveKey = ""; // e.g. "YYYY-MM-DD-HH"
+        let updateTimer = null;
+        let isSimulationMode = false;
+        let simIntervalTimer = null;
+
+        // Fallback Firebase Configuration
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.warn("Using fallback environment credentials...");
+            firebaseConfig = {
+                apiKey: "",
+                authDomain: "scbsemi-realtime-tracker.firebaseapp.com",
+                projectId: "scbsemi-realtime-tracker",
+                storageBucket: "scbsemi-realtime-tracker.appspot.com",
+                messagingSenderId: "12345",
+                appId: "1:12345:web:12345"
+            };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'scbsemi-tracker-cloud';
+
+        // Default locked weights matching the SCBAM PDF report (Top 10 holdings of SMH)
+        const DEFAULT_HOLDINGS = [
+            { ticker: 'AMD', name: 'Advanced Micro Devices Inc', defaultWeight: 10.33, weight: 10.33, price: 507.98, changePercent: 4.00, prevPrice: 488.44, history: [488.44, 495.00, 502.10, 507.98] },
+            { ticker: 'AVGO', name: 'Broadcom Inc', defaultWeight: 9.57, weight: 9.57, price: 172.50, changePercent: 1.20, prevPrice: 170.45, history: [170.45, 171.20, 172.50] },
+            { ticker: 'MU', name: 'Micron Technology Inc', defaultWeight: 9.39, weight: 9.39, price: 138.40, changePercent: -0.80, prevPrice: 139.51, history: [139.51, 137.80, 138.40] },
+            { ticker: 'TSM', name: 'Taiwan Semiconductor Mfg Co', defaultWeight: 8.75, weight: 8.75, price: 164.20, changePercent: 2.15, prevPrice: 160.74, history: [160.74, 162.00, 164.20] },
+            { ticker: 'NVDA', name: 'NVIDIA Corp', defaultWeight: 8.40, weight: 8.40, price: 125.80, changePercent: 3.45, prevPrice: 121.60, history: [121.60, 123.50, 125.80] },
+            { ticker: 'ASML', name: 'ASML Holding NV', defaultWeight: 8.13, weight: 8.13, price: 982.50, changePercent: 0.90, prevPrice: 973.73, history: [973.73, 980.00, 982.50] },
+            { ticker: 'INTC', name: 'Intel Corp', defaultWeight: 8.13, weight: 8.13, price: 30.15, changePercent: -1.50, prevPrice: 30.61, history: [30.61, 29.90, 30.15] },
+            { ticker: 'LRCX', name: 'Lam Research Corp', defaultWeight: 5.62, weight: 5.62, price: 918.40, changePercent: 0.55, prevPrice: 913.37, history: [913.37, 915.00, 918.40] },
+            { ticker: 'AMAT', name: 'Applied Materials Inc', defaultWeight: 5.53, weight: 5.53, price: 212.80, changePercent: 1.10, prevPrice: 210.48, history: [210.48, 211.50, 212.80] },
+            { ticker: 'TXN', name: 'Texas Instruments Inc', defaultWeight: 4.52, weight: 4.52, price: 188.50, changePercent: -0.40, prevPrice: 189.26, history: [189.26, 187.90, 188.50] }
+        ];
+
+        let holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
+
+        // Web Audio Synthesizer logic
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = false;
+
+        window.playAlertSound = function(isUp) {
+            if (!soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                const now = audioCtx.currentTime;
+                if (isUp) {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(392.00, now); // G4
+                    osc.frequency.setValueAtTime(311.13, now + 0.1); // Eb4
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            } catch (e) {
+                console.log('Audio Context Error:', e);
+            }
+        }
+
+        window.toggleSound = function() {
+            soundEnabled = !soundEnabled;
+            const soundBtn = document.getElementById('soundBtn');
+            const soundIcon = document.getElementById('soundIcon');
+            if (soundEnabled) {
+                soundBtn.classList.remove('bg-slate-800', 'text-slate-300');
+                soundBtn.classList.add('bg-indigo-600', 'text-white');
+                soundIcon.className = "fa-solid fa-volume-high";
+                addLog("เปิดระบบเสียงแจ้งเตือนเรียลไทม์", "info");
+                window.playAlertSound(true);
+            } else {
+                soundBtn.classList.remove('bg-indigo-600', 'text-white');
+                soundBtn.classList.add('bg-slate-800', 'text-slate-300');
+                soundIcon.className = "fa-solid fa-volume-mute";
+                addLog("ปิดระบบเสียงแจ้งเตือนเรียลไทม์", "info");
+            }
+        }
+
+        window.toggleBrokerPulsing = function() {
+            isBrokerPulsing = !isBrokerPulsing;
+            const btn = document.getElementById('pulseBtn');
+            if (isBrokerPulsing) {
+                btn.className = "text-xs bg-indigo-600 text-white border border-indigo-500 px-2.5 py-1.5 rounded-lg font-medium transition duration-200";
+                addLog("เปิดใช้งานระบบจำลองขยับราคาไมโครติ๊ก (Live Pulsing)", "info");
+                startPulsingLoop();
+            } else {
+                btn.className = "text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-lg font-medium transition duration-200";
+                addLog("ปิดใช้งานระบบจำลองราคาติ๊ก (ใช้เฉพาะข้อมูลจาก API ตรง)", "info");
+                if (brokerPulseTimer) clearInterval(brokerPulseTimer);
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const format = now.toLocaleTimeString('en-US', { hour12: false, timeZone: "Asia/Bangkok" });
+            const clockEl = document.getElementById('thaiClock');
+            if (clockEl) clockEl.innerText = format + ' THA';
+        }
+
+        // Handle exchange rate input changes without full rebuilds
+        window.onFXRateChange = function() {
+            updateTHBConversionDisplays();
+            window.calculateNAVChange();
+        }
+
+        // Inline updater for the "≈ x,xxx.xx บ." elements in the table
+        function updateTHBConversionDisplays() {
+            const currentFXRate = parseFloat(document.getElementById('usdThbRate').value) || 32.84;
+            holdings.forEach(stock => {
+                const thbLabel = document.getElementById(`thb-price-${stock.ticker}`);
+                if (thbLabel) {
+                    const thbPrice = stock.price * currentFXRate;
+                    thbLabel.innerText = `≈ ${thbPrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บ.`;
+                }
+            });
+        }
+
+        // Build Table rows in HTML with secondary THB conversion label and highlighting classes
+        function buildTable() {
+            const tableBody = document.getElementById('holdingsTableBody');
+            tableBody.innerHTML = '';
+            
+            const currentFXRate = parseFloat(document.getElementById('usdThbRate').value) || 32.84;
+
+            holdings.forEach((stock) => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${stock.ticker}`;
+                
+                // Add conditional classes based on selection
+                const isActive = stock.ticker === activeWidgetTicker;
+                tr.className = isActive 
+                    ? "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer"
+                    : "hover:bg-slate-900/40 transition duration-150 cursor-pointer";
+                
+                tr.onclick = function() { window.changeWidgetTicker(stock.ticker); };
+
+                // Determine trend color
+                const trendColor = stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const trendSign = stock.changePercent >= 0 ? '+' : '';
+
+                // Calculate fund impact (Contribution)
+                const impactVal = (stock.changePercent * (stock.weight / 100));
+                const impactText = (impactVal >= 0 ? '+' : '') + impactVal.toFixed(3) + '%';
+                const impactColor = impactVal >= 0 ? 'text-emerald-400/90' : 'text-red-400/90';
+
+                const thbPrice = stock.price * currentFXRate;
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-scbGold select-none">
+                            ${stock.ticker.substring(0, 3)}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-100 flex items-center gap-1.5 select-none">
+                                <span>${stock.ticker}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 max-w-[150px] truncate select-none">${stock.name}</div>
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 text-right font-mono font-bold text-slate-200 select-none">
+                        <span id="weight-text-${stock.ticker}">${stock.weight.toFixed(2)}</span>%
+                    </td>
+                    <td id="price-container-${stock.ticker}" class="py-2.5 px-3 text-right font-mono select-none">
+                        <div id="price-${stock.ticker}" class="font-bold text-slate-100">$${stock.price.toFixed(2)}</div>
+                        <div id="thb-price-${stock.ticker}" class="text-[10px] text-slate-400">≈ ${thbPrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บ.</div>
+                    </td>
+                    <td id="change-${stock.ticker}" class="py-2.5 px-3 text-right font-mono font-bold ${trendColor} select-none">
+                        ${trendSign}${stock.changePercent.toFixed(2)}%
+                    </td>
+                    <td class="py-2.5 px-3 text-center">
+                        <span id="spark-${stock.ticker}" class="inline-block w-24 h-8 select-none">
+                            ${generateSparklineSVG(stock.history, stock.changePercent >= 0)}
+                        </span>
+                    </td>
+                    <td id="impact-${stock.ticker}" class="py-2.5 px-4 text-right font-mono font-bold ${impactColor} select-none">
+                        ${impactText}
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Generate dynamic SVG sparkline to represent price trend (Clean and bounded to prevent crazy spikes)
+        function generateSparklineSVG(history, isPositive) {
+            if (!history || history.length < 2) {
+                return `
+                    <svg viewBox="0 0 100 30" class="w-full h-full">
+                        <line x1="0" y1="15" x2="100" y2="15" stroke="#475569" stroke-width="1.5" />
+                    </svg>
+                `;
+            }
+
+            const min = Math.min(...history);
+            const max = Math.max(...history);
+            const range = max - min === 0 ? 1 : max - min;
+            
+            const points = history.map((val, i) => {
+                const x = (i / (history.length - 1)) * 100;
+                const y = 25 - ((val - min) / range) * 20; // Maintain margin inside box (height 30)
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+
+            const color = isPositive ? '#34d399' : '#f87171'; // emerald-400 / red-400
+            
+            return `
+                <svg viewBox="0 0 100 30" class="w-full h-full">
+                    <polyline fill="none" stroke="${color}" stroke-width="1.8" points="${points}" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+        }
+
+        // Broker Ticking Engine: Creates fluid, micro fluctuations to emulate active market streaming
+        function startPulsingLoop() {
+            if (brokerPulseTimer) clearInterval(brokerPulseTimer);
+            
+            brokerPulseTimer = setInterval(() => {
+                // Only run pulsing if broker pulsing is active, NOT in full-sim mode, and we have initialized prices
+                if (!isBrokerPulsing || isSimulationMode) return;
+
+                holdings.forEach(stock => {
+                    if (stock.price === 0) return;
+
+                    // Micro-change between -0.04% and +0.04% to represent real-time bid/ask fluctuations
+                    const oldPrice = stock.price;
+                    const changePct = (Math.random() * 0.08) - 0.04; 
+                    
+                    stock.price = stock.price * (1 + (changePct / 100));
+                    stock.changePercent += changePct;
+                    
+                    // Push to history queue and shift oldest out (Maintain strict max length of 30 points)
+                    stock.history.push(stock.price);
+                    if (stock.history.length > 30) {
+                        stock.history.shift();
+                    }
+
+                    // Update values on table live
+                    updateUIElements(stock, oldPrice);
+                });
+
+                window.calculateNAVChange();
+            }, 2500); // Pulse every 2.5 seconds to feel live without lagging browser
+        }
+
+        // Calculate and refresh the Estimated NAV Change (Weights are locked matching the PDF)
+        window.calculateNAVChange = function() {
+            let totalTop10Weight = 0;
+            let weightedChange = 0;
+
+            holdings.forEach(stock => {
+                totalTop10Weight += stock.weight;
+                weightedChange += (stock.changePercent * (stock.weight / 100));
+
+                // Update row's individual impact
+                const rowImpactCell = document.getElementById(`impact-${stock.ticker}`);
+                if (rowImpactCell) {
+                    const impactVal = stock.changePercent * (stock.weight / 100);
+                    const trendSign = impactVal >= 0 ? '+' : '';
+                    rowImpactCell.innerText = `${trendSign}${impactVal.toFixed(3)}%`;
+                    rowImpactCell.className = `py-2.5 px-4 text-right font-mono font-bold ${impactVal >= 0 ? 'text-emerald-400/90' : 'text-red-400/90'}`;
+                }
+            });
+
+            // Adjust for remaining assets (Assuming they track the average performance of top 10 as index tracking)
+            const remainingWeight = 100 - totalTop10Weight;
+            const avgTop10Change = totalTop10Weight > 0 ? (weightedChange / (totalTop10Weight / 100)) : 0;
+            const remainingChange = avgTop10Change * (remainingWeight / 100);
+            
+            // Total iNAV (Top 10 + remaining components)
+            let totalNAVChange = weightedChange + remainingChange;
+            window.latestNAVChange = totalNAVChange;
+
+            const navValueEl = document.getElementById('navChangeValue');
+            const navArrowEl = document.getElementById('navArrow');
+            
+            if (navValueEl && navArrowEl) {
+                const trendSign = totalNAVChange >= 0 ? '+' : '';
+                navValueEl.innerText = `${trendSign}${totalNAVChange.toFixed(2)}%`;
+                
+                if (totalNAVChange >= 0) {
+                    navValueEl.className = "text-3xl font-extrabold font-mono text-emerald-400 transition-colors duration-300";
+                    navArrowEl.className = "text-xl text-emerald-400";
+                    navArrowEl.innerHTML = '<i class="fa-solid fa-arrow-trend-up"></i>';
+                } else {
+                    navValueEl.className = "text-3xl font-extrabold font-mono text-red-400 transition-colors duration-300";
+                    navArrowEl.className = "text-xl text-red-400";
+                    navArrowEl.innerHTML = '<i class="fa-solid fa-arrow-trend-down"></i>';
+                }
+            }
+
+            const weightValEl = document.getElementById('totalCalculatedWeight');
+            const visualTop10El = document.getElementById('visualTop10');
+            const barTop10El = document.getElementById('barTop10');
+            
+            if (weightValEl) weightValEl.innerText = totalTop10Weight.toFixed(2) + '%';
+            if (visualTop10El) visualTop10El.innerText = totalTop10Weight.toFixed(2) + '%';
+            if (barTop10El) barTop10El.style.width = `${totalTop10Weight}%`;
+
+            window.calculatePortfolio();
+        }
+
+        // Portfolio Calculator Function
+        window.calculatePortfolio = function() {
+            const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
+            const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
+            const changePercent = window.latestNAVChange || 0;
+
+            // 1. Calculate current estimated NAV (iNAV)
+            const currentNav = lastNav * (1 + (changePercent / 100));
+            
+            const portCurrentNavEl = document.getElementById('portCurrentNav');
+            const portCurrentValueEl = document.getElementById('portCurrentValue');
+            const portProfitLossEl = document.getElementById('portProfitLoss');
+            
+            if (portCurrentNavEl) portCurrentNavEl.innerText = `฿${currentNav.toFixed(4)}`;
+
+            // 2. Calculate investment performance
+            if (buyNav > 0 && investAmt > 0) {
+                const currentValue = investAmt * (currentNav / buyNav);
+                const profitAmt = currentValue - investAmt;
+                const profitPercent = ((currentNav - buyNav) / buyNav) * 100;
+
+                // Format numbers to localized THB strings
+                if (portCurrentValueEl) portCurrentValueEl.innerText = `฿${currentValue.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                
+                const sign = profitAmt >= 0 ? '+' : '';
+                const colorClass = profitAmt >= 0 ? 'text-emerald-400' : 'text-red-400';
+                
+                if (portProfitLossEl) {
+                    portProfitLossEl.innerText = `${sign}${profitAmt.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท (${sign}${profitPercent.toFixed(2)}%)`;
+                    portProfitLossEl.className = `font-mono font-bold ${colorClass}`;
+                }
+            } else {
+                if (portCurrentValueEl) portCurrentValueEl.innerText = '฿0.00';
+                if (portProfitLossEl) {
+                    portProfitLossEl.innerText = '0.00 บาท (0.00%)';
+                    portProfitLossEl.className = 'font-mono font-bold text-slate-400';
+                }
+            }
+        }
+
+        // Highly robust Proxy rotation fetcher to prevent 'Failed to fetch' CORS blockages
+        async function fetchWithProxy(targetUrl) {
+            const proxies = [
+                (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+            ];
+            
+            for (let i = 0; i < proxies.length; i++) {
+                try {
+                    const proxyUrl = proxies[i](targetUrl);
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) continue;
+                    
+                    const data = await response.json();
+                    
+                    // Decrypt AllOrigins wrap-around if present
+                    if (data && typeof data === 'object' && data.contents !== undefined) {
+                        try {
+                            return JSON.parse(data.contents);
+                        } catch (e) {
+                            return data.contents;
+                        }
+                    }
+                    return data;
+                } catch (e) {
+                    console.warn(`Proxy channel ${i} failed for URL: ${targetUrl}. Trying next proxy...`);
+                }
+            }
+            throw new Error("All proxy servers are currently unresponsive");
+        }
+
+        // Fetch prices from Free Public Yahoo Finance API with CORS Proxy wrapper and Cache-Buster
+        window.fetchAllData = async function() {
+            if (isSimulationMode) return; // Ignore real fetches if in Simulation mode
+
+            addLog("กำลังขอราคาสดล่าสุดจาก API สหรัฐ...", "info");
+            
+            // Fetch SMH Index first for reference via CORS Proxy (With Cache Buster and 1-Minute granularity)
+            try {
+                const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/SMH?range=1d&interval=1m&_=${Date.now()}`;
+                const smhData = await fetchWithProxy(targetUrl);
+                const result = smhData.chart?.result?.[0];
+                if (result) {
+                    const meta = result.meta;
+                    const currentPrice = meta.regularMarketPrice;
+                    const prevClose = meta.previousClose || meta.chartPreviousClose;
+                    const changePercent = ((currentPrice - prevClose) / prevClose) * 100;
+                    const changeAmt = currentPrice - prevClose;
+                    
+                    const smhPriceEl = document.getElementById('smhPrice');
+                    const smhChangeEl = document.getElementById('smhChange');
+                    if (smhPriceEl) smhPriceEl.innerText = `$${currentPrice.toFixed(2)}`;
+                    if (smhChangeEl) {
+                        const changeSign = changePercent >= 0 ? '+' : '';
+                        smhChangeEl.innerText = `${changeSign}${changeAmt.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)`;
+                        smhChangeEl.className = `text-xs font-mono ${changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+                    }
+                }
+            } catch (e) {
+                console.warn("SMH index benchmark fetch temporary failure. Operating under fallback values gracefully.");
+            }
+
+            // Fetch Top 10 Stocks via CORS Proxy (With Cache Buster and 1-Minute granularity)
+            for (let i = 0; i < holdings.length; i++) {
+                const stock = holdings[i];
+                try {
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.ticker}?range=1d&interval=1m&_=${Date.now()}`;
+                    const data = await fetchWithProxy(targetUrl);
+                    const result = data.chart?.result?.[0];
+                    if (result) {
+                        const meta = result.meta;
+                        const latestPrice = meta.regularMarketPrice;
+                        const prevClose = meta.previousClose || meta.chartPreviousClose;
+                        
+                        // Extract today's history points for Sparkline
+                        const quotes = result.indicators?.quote?.[0]?.close || [];
+                        let cleanHistory = quotes.filter(p => p !== null && p !== undefined);
+                        
+                        // STRICT BUGFIX: Slice history to a maximum of 30 points to align with simulated history length
+                        if (cleanHistory.length > 30) {
+                            cleanHistory = cleanHistory.slice(-30);
+                        } else if (cleanHistory.length === 0) {
+                            cleanHistory = [prevClose, latestPrice];
+                        }
+
+                        const oldPrice = stock.price;
+                        stock.price = latestPrice;
+                        stock.changePercent = ((latestPrice - prevClose) / prevClose) * 100;
+                        stock.history = cleanHistory;
+
+                        // Visual flash indicator
+                        updateUIElements(stock, oldPrice);
+                    } else {
+                        throw new Error('Invalid payload format');
+                    }
+                } catch (error) {
+                    // Gracefully switch to simulated broker pricing updates upon API rate-limit/downtime
+                    fallbackMockUpdate(stock);
+                }
+            }
+
+            window.calculateNAVChange();
+        }
+
+        // Fallback or Simulated update if API fails or when Simulation mode is on
+        function fallbackMockUpdate(stock) {
+            if (stock.price === 0) {
+                const initialMockPrice = {
+                    'AMD': 507.98, 'AVGO': 172.50, 'MU': 138.40, 'TSM': 164.20, 'NVDA': 125.80,
+                    'ASML': 982.50, 'INTC': 30.15, 'LRCX': 918.40, 'AMAT': 212.80, 'TXN': 188.50
+                };
+                stock.price = initialMockPrice[stock.ticker] || 100;
+                stock.changePercent = (Math.random() * 4) - 2; // -2% to +2%
+                stock.history = [stock.price * 0.98, stock.price * 0.99, stock.price * (1 + (stock.changePercent/100))];
+            } else {
+                // Dynamic fluctuation (Strictly keep the history at exactly 30 points)
+                const oldPrice = stock.price;
+                const changePct = (Math.random() * 0.3) - 0.14; // Tiny drift -0.14% to +0.16%
+                stock.price = stock.price * (1 + (changePct / 100));
+                stock.changePercent += changePct;
+                
+                stock.history.push(stock.price);
+                if (stock.history.length > 30) {
+                    stock.history.shift();
+                }
+                
+                updateUIElements(stock, oldPrice);
+            }
+        }
+
+        // Apply visual updates, update live THB price, and plays sound alerts
+        function updateUIElements(stock, oldPrice) {
+            const priceCell = document.getElementById(`price-${stock.ticker}`);
+            const thbPriceCell = document.getElementById(`thb-price-${stock.ticker}`);
+            const changeCell = document.getElementById(`change-${stock.ticker}`);
+            const sparkCell = document.getElementById(`spark-${stock.ticker}`);
+            const currentFXRate = parseFloat(document.getElementById('usdThbRate').value) || 32.84;
+
+            if (priceCell) {
+                priceCell.innerText = `$${stock.price.toFixed(2)}`;
+                
+                if (thbPriceCell) {
+                    const currentThbPrice = stock.price * currentFXRate;
+                    thbPriceCell.innerText = `≈ ${currentThbPrice.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บ.`;
+                }
+
+                // Add Flash Glow if price changed
+                if (oldPrice > 0 && stock.price !== oldPrice) {
+                    const isUp = stock.price > oldPrice;
+                    priceCell.classList.add(isUp ? 'glow-green' : 'glow-red');
+                    setTimeout(() => {
+                        priceCell.classList.remove('glow-green', 'glow-red');
+                    }, 800);
+
+                    // Add logs for significant updates
+                    const threshold = 0.05; // 0.05% change inside a single tick
+                    const tickDiffPct = ((stock.price - oldPrice) / oldPrice) * 100;
+                    if (Math.abs(tickDiffPct) >= threshold) {
+                        const trendSign = tickDiffPct >= 0 ? '▲' : '▼';
+                        const logColor = tickDiffPct >= 0 ? 'text-emerald-400' : 'text-red-400';
+                        addLog(`${stock.ticker}: ราคา ${trendSign} เป็น $${stock.price.toFixed(2)} (${tickDiffPct.toFixed(2)}%)`, logColor);
+                        window.playAlertSound(tickDiffPct >= 0);
+                    }
+                }
+            }
+
+            if (changeCell) {
+                const trendSign = stock.changePercent >= 0 ? '+' : '';
+                changeCell.innerText = `${trendSign}${stock.changePercent.toFixed(2)}%`;
+                changeCell.className = `py-2.5 px-3 text-right font-mono font-bold ${stock.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            }
+
+            if (sparkCell) {
+                sparkCell.innerHTML = generateSparklineSVG(stock.history, stock.changePercent >= 0);
+            }
+        }
+
+        // Load TradingView Widget (completely recreate container and load from preloaded SDK)
+        function loadTradingViewWidget(ticker) {
+            const container = document.getElementById('tradingview_widget_container');
+            if (!container) return;
+            container.innerHTML = ''; // clear
+
+            // Create fresh inner DIV for TV to bind cleanly
+            const innerDiv = document.createElement('div');
+            innerDiv.id = 'tv-widget-inner';
+            innerDiv.className = 'w-full h-full';
+            container.appendChild(innerDiv);
+
+            let finalSymbol = ticker;
+            if (ticker === 'TSM') {
+                finalSymbol = 'NYSE:TSM';
+            } else if (ticker === 'ASML') {
+                finalSymbol = 'NASDAQ:ASML';
+            } else if (ticker === 'SMH') {
+                finalSymbol = 'NASDAQ:SMH';
+            } else {
+                finalSymbol = 'NASDAQ:' + ticker;
+            }
+
+            const initWidget = () => {
+                if (typeof TradingView !== 'undefined') {
+                    new TradingView.widget({
+                        "autosize": true,
+                        "symbol": finalSymbol,
+                        "interval": "D",
+                        "timezone": "exchange",
+                        "theme": "dark",
+                        "style": "1",
+                        "locale": "th",
+                        "toolbar_bg": "#f1f3f6",
+                        "enable_publishing": false,
+                        "hide_side_toolbar": true,
+                        "allow_symbol_change": true,
+                        "container_id": "tv-widget-inner"
+                    });
+                } else {
+                    console.error("TradingView SDK loading failed.");
+                }
+            };
+
+            // If TradingView library is already loaded inside global window object
+            if (window.TradingView) {
+                initWidget();
+            } else {
+                // Safe Fallback loop in case network delays preloading
+                setTimeout(() => loadTradingViewWidget(ticker), 200);
+            }
+        }
+
+        // Switch Chart target & highlight selected active row in the table
+        window.changeWidgetTicker = function(ticker) {
+            activeWidgetTicker = ticker;
+            
+            // STRICT BUGFIX: Safely overwrite the header HTML preserving the ID to ensure it is never destroyed
+            const titleEl = document.getElementById('tradingViewTitle');
+            if (titleEl) {
+                titleEl.innerHTML = `<i class="fa-solid fa-chart-line text-indigo-400 mr-1.5"></i>กราฟเทคนิคอล: <span id="widgetSymbol">${ticker}</span>`;
+            }
+            
+            // Remove active classes from SMH benchmark button if not SMH
+            const benchmarkBtn = document.getElementById('smhBenchmarkBtn');
+            if (ticker === 'SMH') {
+                if (benchmarkBtn) {
+                    benchmarkBtn.classList.add('bg-indigo-600', 'text-white');
+                    benchmarkBtn.classList.remove('bg-indigo-900/30', 'text-indigo-300');
+                }
+            } else {
+                if (benchmarkBtn) {
+                    benchmarkBtn.classList.remove('bg-indigo-600', 'text-white');
+                    benchmarkBtn.classList.add('bg-indigo-900/30', 'text-indigo-300');
+                }
+            }
+
+            // Loop and toggle active visual classes on table rows
+            const rows = document.querySelectorAll('#holdingsTableBody tr');
+            rows.forEach(row => {
+                if (row.id === `row-${ticker}`) {
+                    row.className = "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer animate-pulse";
+                    // Brief pulsing animation then solidify
+                    setTimeout(() => {
+                        row.className = "bg-indigo-950/40 border-l-4 border-l-indigo-500 transition duration-150 cursor-pointer";
+                    }, 500);
+                } else {
+                    row.className = "hover:bg-slate-900/40 transition duration-150 cursor-pointer";
+                }
+            });
+
+            loadTradingViewWidget(ticker);
+            addLog("เปลี่ยนกราฟบนแท็บด้านขวาเป็น: " + ticker, "info");
+        }
+
+        // Toggle Simulation (For off-market hours)
+        window.toggleSimMode = function() {
+            isSimulationMode = !isSimulationMode;
+            const simBtn = document.getElementById('toggleSimBtn');
+            const statusGlow = document.getElementById('statusGlow');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            if (isSimulationMode) {
+                // Turn ON Simulation
+                simBtn.innerHTML = '<i class="fa-solid fa-circle-pause text-red-400 mr-1.5"></i>ปิดซิม (Sim)';
+                simBtn.classList.remove('bg-slate-800');
+                simBtn.classList.add('bg-amber-950/80', 'text-amber-200', 'border-amber-700/50');
+                
+                statusGlow.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+                statusText.innerText = "กำลังจำลองราคา (Simulation)";
+                statusText.className = "text-xs font-semibold text-amber-300";
+
+                addLog("เริ่มใช้งานโหมดการจำลองราคาวิ่งอัตโนมัติ (Simulation ON)", "warning");
+
+                // Start High Frequency update loop
+                simIntervalTimer = setInterval(() => {
+                    holdings.forEach(stock => {
+                        fallbackMockUpdate(stock);
+                    });
+                    window.calculateNAVChange();
+                }, 1500);
+
+            } else {
+                // Turn OFF Simulation
+                simBtn.innerHTML = '<i class="fa-solid fa-circle-play text-amber-400 mr-1.5"></i>จำลอง (Demo)';
+                simBtn.classList.remove('bg-amber-950/80', 'text-amber-200', 'border-amber-700/50');
+                simBtn.classList.add('bg-slate-800');
+
+                statusGlow.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-green-500";
+                statusText.innerText = "ดึงข้อมูลจริง (Real-Time)";
+                statusText.className = "text-xs font-semibold text-slate-300";
+
+                addLog("ยกเลิกการจำลอง กลับมาใช้ราคาระบบ (Simulation OFF)", "info");
+                clearInterval(simIntervalTimer);
+                window.fetchAllData();
+            }
+        }
+
+        // Setup automated update intervals
+        window.resetInterval = function() {
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+            const speed = parseInt(document.getElementById('updateInterval').value);
+            if (speed > 0) {
+                updateTimer = setInterval(window.fetchAllData, speed);
+                addLog(`ตั้งค่าช่วงเวลาอัปเดตอัตโนมัติทุกๆ ${speed/1000} วินาที`, "info");
+            } else {
+                addLog("ปิดการอัปเดตออโต้ (ปรับใช้แมนนวล)", "info");
+            }
+        }
+
+        // Authentication Setup
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth priority failure: Attempting anonymous authentication", err);
+                try {
+                    await signInAnonymously(auth);
+                } catch (anonymErr) {
+                    console.error("Failed anonymous authentication fallback", anonymErr);
+                    const statusTxtEl = document.getElementById('statusText');
+                    if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์ (กรอกข้อมูลได้ปกติ)";
+                }
+            }
+        };
+
+        // Listen for authentication changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                const statusTxtEl = document.getElementById('statusText');
+                const syncIndEl = document.getElementById('syncIndicator');
+                
+                if (statusTxtEl) statusTxtEl.innerText = "เชื่อมต่อคลาวด์แล้ว";
+                if (syncIndEl) {
+                    syncIndEl.classList.remove('border-slate-800');
+                    syncIndEl.classList.add('border-emerald-800/80');
+                }
+                
+                // Fetch User settings & history list
+                setupRealtimeSync(user.uid);
+            } else {
+                currentUser = null;
+                const statusTxtEl = document.getElementById('statusText');
+                if (statusTxtEl) statusTxtEl.innerText = "คลาวด์ออฟไลน์";
+            }
+        });
+
+        // Setup real-time listeners for Settings & History
+        function setupRealtimeSync(userId) {
+            if (!userId) return;
+
+            // 1. Portfolio settings listener
+            const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'portfolio', 'settings');
+            onSnapshot(settingsDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('investAmt').value = data.investAmt || 10000;
+                    document.getElementById('buyNav').value = data.buyNav || 10.0000;
+                    document.getElementById('lastNav').value = data.lastNav || 10.5000;
+                    window.calculatePortfolio();
+                } else {
+                    // Create default doc if missing
+                    savePortfolioSettingsSilent();
+                }
+            }, (err) => {
+                console.error("Failed syncing settings:", err);
+            });
+
+            // 2. History collection snapshot listener
+            const historyColRef = collection(db, 'artifacts', appId, 'users', userId, 'history');
+            onSnapshot(historyColRef, (colSnap) => {
+                const historyList = [];
+                colSnap.forEach(doc => {
+                    historyList.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort history on client side to avoid complex index query requirements (Rule 2 Compliance)
+                historyList.sort((a, b) => {
+                    const dateA = a.date + " " + a.time;
+                    const dateB = b.date + " " + b.time;
+                    return dateB.localeCompare(dateA); // Newest first
+                });
+
+                renderHistoryTable(historyList);
+            }, (err) => {
+                console.error("Failed syncing history records:", err);
+            });
+        }
+
+        // Render History snapshot table
+        function renderHistoryTable(records) {
+            const body = document.getElementById('historyTableBody');
+            if (!body) return;
+            if (records.length === 0) {
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-500 italic">ไม่มีข้อมูลการบันทึกสถานะพอร์ตย้อนหลัง</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            body.innerHTML = '';
+            records.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/40 border-b border-slate-800/40";
+
+                const isProfit = item.profitLossAmt >= 0;
+                const plColor = isProfit ? 'text-emerald-400' : 'text-red-400';
+                const plSign = isProfit ? '+' : '';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-slate-300">${item.dateThai || item.date}</td>
+                    <td class="py-3 px-4 text-slate-400">${item.time} น.</td>
+                    <td class="py-3 px-4 text-right font-mono">${parseFloat(item.lastNav).toFixed(4)}</td>
+                    <td class="py-3 px-4 text-right font-mono text-scbGold">${parseFloat(item.currentNav).toFixed(4)}</td>
+                    <td class="py-3 px-4 text-right font-mono font-bold ${plColor}">
+                        ${plSign}${item.profitLossAmt.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} บาท
+                        <div class="text-[10px] opacity-80">${plSign}${item.profitLossPercent.toFixed(2)}%</div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="window.deleteHistoryRecord('${item.id}')" class="text-red-400/70 hover:text-red-400 transition hover:scale-110">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        // Global functions tied to window object for access inside inline events
+        window.savePortfolioSettings = async function() {
+            if (!currentUser) {
+                alert("ระบบคลาวด์ยังไม่พร้อมใช้งานชั่วคราว");
+                return;
+            }
+
+            const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
+            const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
+
+            addLog("กำลังบันทึกข้อมูลตั้งค่าพอร์ตไปยังระบบคลาวด์...", "info");
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'portfolio', 'settings');
+                await setDoc(docRef, { investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() });
+                addLog("บันทึกพอร์ตเข้าคลาวด์สำรองสำเร็จ!", "text-emerald-400");
+            } catch (err) {
+                console.error("Save failure", err);
+                addLog("บันทึกข้อมูลพอร์ตล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ต", "warning");
+            }
+        };
+
+        async function savePortfolioSettingsSilent() {
+            if (!currentUser) return;
+            const investAmt = parseFloat(document.getElementById('investAmt').value) || 10000;
+            const buyNav = parseFloat(document.getElementById('buyNav').value) || 10.0000;
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 10.5000;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'portfolio', 'settings');
+                await setDoc(docRef, { investAmt, buyNav, lastNav, lastUpdated: new Date().toISOString() });
+            } catch (e) {
+                console.warn("Silent save failed", e);
+            }
+        }
+
+        // Action to record manual snapshot
+        window.saveManualSnapshot = async function() {
+            if (!currentUser) {
+                addLog("ไม่สามารถบันทึกได้เนื่องจากระบบฐานข้อมูลออฟไลน์", "warning");
+                return;
+            }
+
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
+            const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
+            const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
+            const changePercent = window.latestNAVChange || 0;
+
+            const currentNav = lastNav * (1 + (changePercent / 100));
+            const currentValue = buyNav > 0 ? (investAmt * (currentNav / buyNav)) : 0;
+            const profitLossAmt = currentValue - investAmt;
+            const profitLossPercent = buyNav > 0 ? (((currentNav - buyNav) / buyNav) * 100) : 0;
+
+            // Thai Date / Time formatter
+            const now = new Date();
+            const thTimeStr = now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"});
+            const thTime = new Date(thTimeStr);
+            const dateStr = thTime.toISOString().split('T')[0];
+            const timeStr = thTime.toTimeString().split(' ')[0].substring(0, 5); // "HH:MM"
+            
+            const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+            const dateThai = `${thTime.getDate()} ${thaiMonths[thTime.getMonth()]} ${thTime.getFullYear() + 543}`;
+
+            addLog("กำลังเก็บบันทึก Snapshot ยอดพอร์ตปัจจุบันลงฐานข้อมูล...", "info");
+
+            try {
+                const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'history');
+                await addDoc(colRef, {
+                    date: dateStr,
+                    dateThai: dateThai,
+                    time: timeStr,
+                    lastNav,
+                    currentNav,
+                    investAmt,
+                    buyNav,
+                    profitLossAmt,
+                    profitLossPercent,
+                    createdType: "Manual",
+                    timestamp: new Date().toISOString()
+                });
+                addLog(`บันทึก Snapshot ประสบความสำเร็จ (${timeStr} น.)`, "text-emerald-400");
+            } catch (err) {
+                console.error("Save snapshot error", err);
+                addLog("ข้อผิดพลาดทางเทคนิคในการเก็บบันทึก Snapshot", "warning");
+            }
+        };
+
+        // Delete recorded snapshot
+        window.deleteHistoryRecord = async function(docId) {
+            if (!currentUser || !docId) return;
+            if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลประวัติ Snapshot นี้ออกอย่างถาวร?")) return;
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'history', docId);
+                await deleteDoc(docRef);
+                addLog("ลบประวัติ Snapshot ออกจากคลาวด์สำเร็จ", "info");
+            } catch (err) {
+                console.error("Failed to delete document:", err);
+                addLog("ลบข้อมูลประวัติล้มเหลว", "warning");
+            }
+        };
+
+        // Automated Snapshot Saver at 00:00 and 05:00 THA
+        window.triggerAutomaticTimeSnapshot = async function(dateStr, timeStr, hourVal) {
+            if (!currentUser) return;
+
+            const lastNav = parseFloat(document.getElementById('lastNav').value) || 0;
+            const buyNav = parseFloat(document.getElementById('buyNav').value) || 0;
+            const investAmt = parseFloat(document.getElementById('investAmt').value) || 0;
+            const changePercent = window.latestNAVChange || 0;
+
+            const currentNav = lastNav * (1 + (changePercent / 100));
+            const currentValue = buyNav > 0 ? (investAmt * (currentNav / buyNav)) : 0;
+            const profitLossAmt = currentValue - investAmt;
+            const profitLossPercent = buyNav > 0 ? (((currentNav - buyNav) / buyNav) * 100) : 0;
+
+            const thTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+            const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+            const dateThai = `${thTime.getDate()} ${thaiMonths[thTime.getMonth()]} ${thTime.getFullYear() + 543}`;
+
+            try {
+                const colRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'history');
+                await addDoc(colRef, {
+                    date: dateStr,
+                    dateThai: dateThai,
+                    time: timeStr,
+                    lastNav,
+                    currentNav,
+                    investAmt,
+                    buyNav,
+                    profitLossAmt,
+                    profitLossPercent,
+                    createdType: `Automatic_${hourVal}`,
+                    timestamp: new Date().toISOString()
+                });
+                addLog(`[ระบบ] บันทึกรายงานพอร์ตอัตโนมัติรอบเวลา ${timeStr} น. เรียบร้อยแล้ว`, "text-scbGold");
+            } catch (err) {
+                console.error("Auto snapshot error", err);
+            }
+        };
+
+        // Scrape SCBAM official NAV
+        window.fetchScbamNAV = async function() {
+            addLog("กำลังร้องขอราคาจากเว็บไซต์ทางการ SCBAM...", "info");
+            
+            try {
+                const targetUrl = 'https://www.scbam.com/th/fund/refe-fund/details/scbsemi';
+                const html = await fetchWithProxy(targetUrl);
+                
+                if (!html || html.length < 100) {
+                    throw new Error("Unable to reach SCBAM server or HTML payload is too short");
+                }
+
+                // 1. Try parsing regex mapping specifically to SCBSEMI(A) or standard NAV tables
+                const navRegex = /SCBSEMI\(A\).*?(\d{1,2}\.\d{4})/i;
+                let match = html.match(navRegex);
+                let scbamNav = null;
+
+                if (match) {
+                    scbamNav = parseFloat(match[1]);
+                } else {
+                    // Alternate: Search for standard 4-decimal points in tables typically belonging to fund prices
+                    const generalNavRegex = />(\d{1,2}\.\d{4})</g;
+                    let matches = [...html.matchAll(generalNavRegex)];
+                    if (matches && matches.length > 0) {
+                        const validNavs = matches
+                            .map(m => parseFloat(m[1]))
+                            .filter(v => v > 6 && v < 30);
+                        if (validNavs.length > 0) {
+                            scbamNav = validNavs[0];
+                        }
+                    }
+                }
+
+                if (!scbamNav) {
+                    // Try parsing with standard 'ราคาหน่วยลงทุน' label mapping
+                    const alternateMatch = html.match(/(?:ราคาหน่วยลงทุน|NAV).*?(\d{1,2}\.\d{4})/i);
+                    if (alternateMatch) {
+                        scbamNav = parseFloat(alternateMatch[1]);
+                    }
+                }
+
+                if (scbamNav) {
+                    document.getElementById('lastNav').value = scbamNav.toFixed(4);
+                    addLog(`[SCBAM] ดึงข้อมูลสำเร็จ! ได้ราคา NAV ล่าสุดคือ ฿${scbamNav.toFixed(4)}`, "text-scbGold");
+                    window.calculatePortfolio();
+                    savePortfolioSettingsSilent();
+                } else {
+                    throw new Error("NAV value missing in document pattern");
+                }
+
+            } catch (err) {
+                console.error("SCBAM Scrape Error: ", err);
+                addLog("ระบบแกะข้อมูลบล็อกชั่วคราว กรุณาป้อนราคา NAV ประจำวันแบบแมนนวล", "warning");
+            }
+        };
+
+        // Add Log Item helper
+        function addLog(text, type = "normal") {
+            const logContainer = document.getElementById('logContainer');
+            if (!logContainer) return;
+            if (logContainer.innerHTML.includes('เริ่มต้นระบบ...')) {
+                logContainer.innerHTML = '';
+            }
+
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: "Asia/Bangkok" });
+            let colorClass = "text-slate-400";
+            if (type === "warning") colorClass = "text-amber-400 font-bold";
+            if (type === "info") colorClass = "text-indigo-400";
+            if (type.startsWith("text-")) colorClass = type;
+
+            const logLine = document.createElement('p');
+            logLine.className = `${colorClass} py-0.5 leading-tight`;
+            logLine.innerHTML = `[${timestamp}] ${text}`;
+
+            logContainer.prepend(logLine);
+
+            if (logContainer.children.length > 30) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        window.clearLogs = function() {
+            const logContainer = document.getElementById('logContainer');
+            if (logContainer) {
+                logContainer.innerHTML = `<p class="text-slate-500 italic">เริ่มต้นระบบ... รอรับข้อมูล</p>`;
+            }
+        }
+
+        // --- THE FIX: RUN INITIALIZATION DIRECTLY ---
+        // Since <script type="module"> is deferred and loads after HTML parsing is complete,
+        // we do NOT need to wait for 'DOMContentLoaded' which may have already fired.
+        function initApp() {
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            buildTable();
+            // Start with active symbol AMD highlighted
+            window.changeWidgetTicker("AMD");
+            
+            window.fetchAllData();
+            window.resetInterval();
+            startPulsingLoop();
+            initAuth();
+            
+            // Realtime Clock check to trigger auto saves at 00:00 and 05:00 Thailand time
+            setInterval(() => {
+                const now = new Date();
+                const thTimeStr = now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"});
+                const thTime = new Date(thTimeStr);
+                
+                const hh = thTime.getHours();
+                const mm = thTime.getMinutes();
+                const ss = thTime.getSeconds();
+                const dateStr = thTime.toISOString().split('T')[0]; // "YYYY-MM-DD"
+                
+                // Check for exactly 00:00:00 or 05:00:00
+                if ((hh === 0 && mm === 0 && ss === 0) || (hh === 5 && mm === 0 && ss === 0)) {
+                    const autoSaveKey = `${dateStr}-${hh}`;
+                    if (lastAutoSaveKey !== autoSaveKey) {
+                        lastAutoSaveKey = autoSaveKey;
+                        const formattedTime = `${hh.toString().padStart(2, '0')}:00`;
+                        window.triggerAutomaticTimeSnapshot(dateStr, formattedTime, hh);
+                    }
+                }
+            }, 1000);
+        }
+
+        // Call immediately instead of using event listener
+        initApp();
+
+    </script>
+</body>
+</html>
